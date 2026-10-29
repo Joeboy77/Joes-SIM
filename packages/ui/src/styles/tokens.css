@@ -1,0 +1,112 @@
+/*
+ * Joe's SIM design tokens.
+ *
+ * This file is the single source of truth for colour, spacing, radius and type.
+ * Every theme defines the same set of colour tokens; src/contrast.test.ts checks them
+ * against WCAG 2.2 contrast ratios, so a theme cannot ship with unreadable pairs.
+ *
+ * Meaning stays consistent across the product (brief, Section 6.4): `read`, `write` and
+ * `branch` always mean the same thing, and are always paired with an icon or label.
+ */
+
+:root {
+  /* Spacing scale (4px base). */
+  --sim-space-0: 0;
+  --sim-space-1: 0.25rem;
+  --sim-space-2: 0.5rem;
+  --sim-space-3: 0.75rem;
+  --sim-space-4: 1rem;
+  --sim-space-5: 1.5rem;
+  --sim-space-6: 2rem;
+  --sim-space-7: 3rem;
+  --sim-space-8: 4rem;
+
+  /* Radius. */
+  --sim-radius-sm: 0.25rem;
+  --sim-radius-md: 0.5rem;
+  --sim-radius-lg: 0.75rem;
+
+  /* Type scale. Sizes use rem so they follow the browser's text-size setting. */
+  --sim-font-size-xs: 0.75rem;
+  --sim-font-size-sm: 0.875rem;
+  --sim-font-size-md: 1rem;
+  --sim-font-size-lg: 1.25rem;
+  --sim-font-size-xl: 1.5rem;
+  --sim-font-size-2xl: 2rem;
+  --sim-font-size-3xl: 2.75rem;
+  --sim-line-height-tight: 1.2;
+  --sim-line-height-normal: 1.5;
+
+  /* Motion. Durations collapse to near zero under reduced motion (see below). */
+  --sim-duration-fast: 120ms;
+  --sim-duration-normal: 240ms;
+  --sim-duration-slow: 480ms;
+  --sim-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* Light theme: the default. */
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+  --sim-color-bg: #f6f7f9;
+  --sim-color-surface: #ffffff;
+  --sim-color-surface-2: #eceff3;
+  --sim-color-text: #141821;
+  --sim-color-text-muted: #4a5365;
+  --sim-color-border: #d3d8e0;
+  --sim-color-border-strong: #6a7386;
+  --sim-color-accent: #1d4ed8;
+  --sim-color-on-accent: #ffffff;
+  --sim-color-focus: #b4400a;
+  --sim-color-read: #0a6588;
+  --sim-color-write: #9a4700;
+  --sim-color-branch: #6a2bd0;
+  --sim-color-danger: #b42318;
+  --sim-color-success: #087443;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --sim-color-bg: #0f1218;
+  --sim-color-surface: #171b23;
+  --sim-color-surface-2: #212734;
+  --sim-color-text: #e8ebf1;
+  --sim-color-text-muted: #a6aebd;
+  --sim-color-border: #313847;
+  --sim-color-border-strong: #7d8699;
+  --sim-color-accent: #82a8ff;
+  --sim-color-on-accent: #0f1218;
+  --sim-color-focus: #ffd166;
+  --sim-color-read: #5cc8ff;
+  --sim-color-write: #ffb454;
+  --sim-color-branch: #c9a3ff;
+  --sim-color-danger: #ff8a80;
+  --sim-color-success: #62d692;
+}
+
+[data-theme="high-contrast"] {
+  color-scheme: dark;
+  --sim-color-bg: #000000;
+  --sim-color-surface: #000000;
+  --sim-color-surface-2: #141414;
+  --sim-color-text: #ffffff;
+  --sim-color-text-muted: #e6e6e6;
+  --sim-color-border: #ffffff;
+  --sim-color-border-strong: #ffffff;
+  --sim-color-accent: #ffff00;
+  --sim-color-on-accent: #000000;
+  --sim-color-focus: #00ffff;
+  --sim-color-read: #00e5ff;
+  --sim-color-write: #ffb000;
+  --sim-color-branch: #ff8cff;
+  --sim-color-danger: #ff8080;
+  --sim-color-success: #40ff90;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --sim-duration-fast: 1ms;
+    --sim-duration-normal: 1ms;
+    --sim-duration-slow: 1ms;
+  }
+}
