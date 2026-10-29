@@ -1,0 +1,47 @@
+@import "tailwindcss";
+@import "@joes-sim/ui/tokens.css";
+
+/* Theme switching is driven by [data-theme] on <html>, not by Tailwind's dark variant. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+@custom-variant hc (&:where([data-theme="high-contrast"], [data-theme="high-contrast"] *));
+
+/* Map the design tokens into Tailwind so utilities such as bg-surface and text-muted work. */
+@theme inline {
+  --color-bg: var(--sim-color-bg);
+  --color-surface: var(--sim-color-surface);
+  --color-surface-2: var(--sim-color-surface-2);
+  --color-text: var(--sim-color-text);
+  --color-muted: var(--sim-color-text-muted);
+  --color-border: var(--sim-color-border);
+  --color-border-strong: var(--sim-color-border-strong);
+  --color-accent: var(--sim-color-accent);
+  --color-on-accent: var(--sim-color-on-accent);
+  --color-focus: var(--sim-color-focus);
+  --color-read: var(--sim-color-read);
+  --color-write: var(--sim-color-write);
+  --color-branch: var(--sim-color-branch);
+  --color-danger: var(--sim-color-danger);
+  --color-success: var(--sim-color-success);
+
+  --radius-sm: var(--sim-radius-sm);
+  --radius-md: var(--sim-radius-md);
+  --radius-lg: var(--sim-radius-lg);
+
+  --font-sans: var(--font-atkinson), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+
+html {
+  background-color: var(--sim-color-bg);
+  color: var(--sim-color-text);
+}
+
+body {
+  font-family: var(--font-sans);
+  line-height: var(--sim-line-height-normal);
+}
+
+:focus-visible {
+  outline: 3px solid var(--sim-color-focus);
+  outline-offset: 2px;
+}
