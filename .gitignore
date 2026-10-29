@@ -1,0 +1,14 @@
+node_modules/
+.next/
+out/
+dist/
+coverage/
+.turbo/
+playwright-report/
+test-results/
+*.tsbuildinfo
+next-env.d.ts
+.env*.local
+.DS_Store
+# The original design brief stays local; its content lives in docs/.
+*.docx
