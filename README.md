@@ -45,6 +45,14 @@ pnpm dev          # http://localhost:3000
 
 Before the first `pnpm test:e2e`, install the browser once: `pnpm --filter @joes-sim/web exec playwright install chromium`.
 
+## The engine
+
+The engine in [`packages/engine`](packages/engine/) runs the classic Little Man Computer in three
+dialects (Classic, Higginson-compatible and OCR). It steps by instruction or micro-step with events
+for every register transfer, records history for stepping backwards, proves when a program can
+never stop, and assembles with plain-language diagnostics. See [docs/specs](docs/specs/) for the
+exact rules of each dialect.
+
 ## Repository layout
 
 ```
