@@ -1,0 +1,17 @@
+{
+  "name": "@joes-sim/narration",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Turns engine events into plain-language sentences (Phase 3).",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint src",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests",
+    "test:coverage": "vitest run --coverage --passWithNoTests"
+  }
+}
