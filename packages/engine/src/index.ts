@@ -1,10 +1,15 @@
 /**
  * @joes-sim/engine
  *
- * The engine is a set of pure functions: `step(state, options) -> { state, events }`.
- * It must never depend on React, the DOM or any browser API, so the same code runs in
- * the app, in tests, in a web worker and in the embed widget.
- *
- * Phase 0 only sets up the package. The classic machine arrives in Phase 1.
+ * Pure TypeScript machines. `step(state, options) -> { state, events }` moves the machine; the
+ * events drive every view. No React, no DOM, no browser APIs, so the same code runs in the app,
+ * in tests, in a web worker and in the embed widget.
  */
-export const ENGINE_VERSION = "0.0.0";
+export * from "./core";
+export * from "./dialects";
+export * from "./assembler";
+export * from "./analysis";
+export * from "./machines";
+export * from "./reference";
+
+export const ENGINE_VERSION = "0.1.0";
