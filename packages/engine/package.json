@@ -12,6 +12,10 @@
     "lint": "eslint src",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run --passWithNoTests",
-    "test:coverage": "vitest run --coverage --passWithNoTests"
+    "test:coverage": "vitest run --coverage --passWithNoTests",
+    "bench": "vitest run src/performance.test.ts"
+  },
+  "devDependencies": {
+    "fast-check": "^4.10.2"
   }
 }
