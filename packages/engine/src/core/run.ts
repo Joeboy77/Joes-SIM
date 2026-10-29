@@ -1,0 +1,184 @@
+import { FastCore } from "../machines/classic/fast";
+import { stepMicro } from "../machines/classic/micro";
+import type { MachineState } from "./types";
+
+export type StopReason =
+  "halted" | "error" | "waiting-input" | "breakpoint" | "budget" | "infinite-loop";
+
+export interface InfiniteLoop {
+  /** The instruction count (cycle) at which the repeating part begins. */
+  readonly startCycle: number;
+  /** Address of the first instruction of the repeating part. */
+  readonly startAddress: number;
+  /** Instructions in one trip round the loop. */
+  readonly length: number;
+}
+
+export interface RunOptions {
+  /** Most instructions to run before stopping with reason "budget". Default 1,000,000. */
+  readonly maxSteps?: number;
+  /** Stop before running an instruction at one of these addresses. */
+  readonly breakpoints?: Iterable<number>;
+  /** Stop when the machine state repeats with no input read. Default true. */
+  readonly detectLoops?: boolean;
+}
+
+export interface RunResult {
+  readonly state: MachineState;
+  readonly reason: StopReason;
+  readonly loop?: InfiniteLoop;
+}
+
+export const DEFAULT_STEP_BUDGET = 1_000_000;
+
+/**
+ * Runs until the program stops, needs input, reaches a breakpoint, uses up its budget or is
+ * proven to loop forever. No events are produced; use `step` to watch execution.
+ */
+export function run(initial: MachineState, options: RunOptions = {}): RunResult {
+  const budget = options.maxSteps ?? DEFAULT_STEP_BUDGET;
+  const breakpoints = new Set(options.breakpoints ?? []);
+  const detectLoops = options.detectLoops ?? true;
+
+  let state = initial;
+  let executed = 0;
+  // Finish an instruction that is part-way through, one micro-step at a time.
+  if (state.stage !== 0 && state.status === "ready") {
+    while (state.stage !== 0 && state.status === "ready") state = stepMicro(state).state;
+    executed = 1;
+  }
+  const early = stopReason(state);
+  if (early) return { state, reason: early };
+
+  const core = new FastCore(state);
+  const detector = detectLoops ? new LoopDetector(core) : null;
+
+  while (true) {
+    if (executed > 0 && breakpoints.has(core.pc))
+      return { state: core.toState(), reason: "breakpoint" };
+    if (executed >= budget) return { state: core.toState(), reason: "budget" };
+    const outcome = core.exec();
+    executed++;
+    if (outcome === "halted") return { state: core.toState(), reason: "halted" };
+    if (outcome === "error") return { state: core.toState(), reason: "error" };
+    if (outcome === "waiting-input") return { state: core.toState(), reason: "waiting-input" };
+    const loop = detector?.observe();
+    if (loop) return { state: core.toState(), reason: "infinite-loop", loop };
+  }
+}
+
+function stopReason(state: MachineState): StopReason | null {
+  if (state.status === "halted") return "halted";
+  if (state.status === "error") return "error";
+  if (state.status === "waiting-input") return "waiting-input";
+  return null;
+}
+
+interface Snapshot {
+  pc: number;
+  acc: number;
+  negative: boolean;
+  memory: number[];
+  version: number;
+  cycles: number;
+}
+
+/**
+ * Proves a program can never halt. Between inputs the machine is deterministic, so if its state
+ * (memory, PC, accumulator, flag) ever repeats, it will repeat forever. Uses Brent's cycle
+ * detection: constant extra memory, and found within a few trips round the loop.
+ */
+class LoopDetector {
+  private segmentStart!: Snapshot;
+  private tortoise!: Snapshot;
+  private power = 1;
+  private lambda = 0;
+  private inputIndex = -1;
+
+  constructor(private readonly core: FastCore) {
+    this.reset();
+  }
+
+  observe(): InfiniteLoop | null {
+    const core = this.core;
+    if (core.inputIndex !== this.inputIndex) {
+      this.reset();
+      return null;
+    }
+    this.lambda++;
+    if (this.sameAsTortoise()) return this.locate(this.lambda);
+    // Brent: move the tortoise up to the hare each time the step count reaches a power of two.
+    if (this.lambda === this.power) {
+      this.tortoise = this.snapshot();
+      this.power *= 2;
+      this.lambda = 0;
+    }
+    return null;
+  }
+
+  private reset(): void {
+    this.inputIndex = this.core.inputIndex;
+    this.segmentStart = this.snapshot();
+    this.tortoise = this.segmentStart;
+    this.power = 1;
+    this.lambda = 0;
+  }
+
+  private snapshot(): Snapshot {
+    const c = this.core;
+    return {
+      pc: c.pc,
+      acc: c.acc,
+      negative: c.negative,
+      memory: c.snapshotMemory(),
+      version: c.memoryVersion,
+      cycles: c.cycles,
+    };
+  }
+
+  private sameAsTortoise(): boolean {
+    const c = this.core;
+    const t = this.tortoise;
+    if (c.pc !== t.pc || c.acc !== t.acc || c.negative !== t.negative) return false;
+    if (c.memoryVersion === t.version) return true;
+    return sameMemory(c.memory, t.memory);
+  }
+
+  /** Finds where the loop begins by replaying from the start of this input-free stretch. */
+  private locate(length: number): InfiniteLoop {
+    const start = this.segmentStart;
+    const base = this.core.toState();
+    const fromStart = (): FastCore =>
+      new FastCore({
+        ...base,
+        pc: start.pc,
+        acc: start.acc,
+        negative: start.negative,
+        memory: start.memory,
+        cycles: start.cycles,
+        status: "ready",
+        stage: 0,
+      });
+    const a = fromStart();
+    const b = fromStart();
+    for (let i = 0; i < length; i++) b.exec();
+    let mu = 0;
+    while (!(
+      a.pc === b.pc &&
+      a.acc === b.acc &&
+      a.negative === b.negative &&
+      sameMemory(a.memory, b.memory)
+    )) {
+      a.exec();
+      b.exec();
+      mu++;
+    }
+    return { startCycle: start.cycles + mu, startAddress: a.pc, length };
+  }
+}
+
+function sameMemory(a: readonly number[], b: readonly number[]): boolean {
+  if (a === b) return true;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+}
