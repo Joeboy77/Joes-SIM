@@ -14,3 +14,8 @@ One file per decision, named `NNNN-short-title.md`, each with four headings:
 | 0007 | [History granularity and limits](0007-history.md)                     |
 | 0008 | [Infinite-loop detection](0008-infinite-loop-detection.md)            |
 | 0009 | [Which mistake detectors are static](0009-runtime-detectors-later.md) |
+| 0010 | [One store for the simulator](0010-simulator-state.md)                |
+| 0011 | [How the machine is animated](0011-animation.md)                      |
+| 0012 | [Running the engine in a web worker](0012-web-worker.md)              |
+| 0013 | [Phone layout and presentation mode](0013-responsive-layout.md)       |
+| 0014 | [The port for browser tests](0014-e2e-port.md)                        |

@@ -16,8 +16,8 @@ the University of Ghana, Legon, and then for students, teachers and self-learner
 | Phase | What it delivers                                                                      | Status      |
 | ----- | ------------------------------------------------------------------------------------- | ----------- |
 | 0     | Foundation: monorepo, app shell, themes, tests, CI                                    | Done        |
-| 1     | Engine, assembler and dialects                                                        | Not started |
-| 2     | Core simulator interface                                                              | Not started |
+| 1     | Engine, assembler and dialects                                                        | Done        |
+| 2     | Core simulator interface                                                              | Done        |
 | 3     | Understanding tools (narration, time travel, traces)                                  | Not started |
 | 4     | Practice, lessons and saving                                                          | Not started |
 | 5     | Sharing, offline, translation and public launch                                       | Not started |
