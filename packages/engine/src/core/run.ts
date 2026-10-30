@@ -1,9 +1,10 @@
 import { FastCore } from "../machines/classic/fast";
 import { stepMicro } from "../machines/classic/micro";
+import { conditionMet, type RunCondition } from "./conditions";
 import type { MachineState } from "./types";
 
 export type StopReason =
-  "halted" | "error" | "waiting-input" | "breakpoint" | "budget" | "infinite-loop";
+  "halted" | "error" | "waiting-input" | "breakpoint" | "budget" | "infinite-loop" | "condition";
 
 export interface InfiniteLoop {
   /** The instruction count (cycle) at which the repeating part begins. */
@@ -21,12 +22,16 @@ export interface RunOptions {
   readonly breakpoints?: Iterable<number>;
   /** Stop when the machine state repeats with no input read. Default true. */
   readonly detectLoops?: boolean;
+  /** Stop after the first instruction that makes any of these true. */
+  readonly conditions?: readonly RunCondition[];
 }
 
 export interface RunResult {
   readonly state: MachineState;
   readonly reason: StopReason;
   readonly loop?: InfiniteLoop;
+  /** Which condition stopped the run, when the reason is "condition". */
+  readonly condition?: number;
 }
 
 export const DEFAULT_STEP_BUDGET = 1_000_000;
@@ -39,6 +44,9 @@ export function run(initial: MachineState, options: RunOptions = {}): RunResult 
   const budget = options.maxSteps ?? DEFAULT_STEP_BUDGET;
   const breakpoints = new Set(options.breakpoints ?? []);
   const detectLoops = options.detectLoops ?? true;
+  const conditions = options.conditions ?? [];
+  const metCondition = (view: Parameters<typeof conditionMet>[1]) =>
+    conditions.findIndex((c) => conditionMet(c, view));
 
   let state = initial;
   let executed = 0;
@@ -49,6 +57,10 @@ export function run(initial: MachineState, options: RunOptions = {}): RunResult 
   }
   const early = stopReason(state);
   if (early) return { state, reason: early };
+  if (executed > 0) {
+    const met = metCondition(state);
+    if (met >= 0) return { state, reason: "condition", condition: met };
+  }
 
   const core = new FastCore(state);
   const detector = detectLoops ? new LoopDetector(core) : null;
@@ -62,6 +74,10 @@ export function run(initial: MachineState, options: RunOptions = {}): RunResult 
     if (outcome === "halted") return { state: core.toState(), reason: "halted" };
     if (outcome === "error") return { state: core.toState(), reason: "error" };
     if (outcome === "waiting-input") return { state: core.toState(), reason: "waiting-input" };
+    if (conditions.length > 0) {
+      const met = metCondition(core);
+      if (met >= 0) return { state: core.toState(), reason: "condition", condition: met };
+    }
     const loop = detector?.observe();
     if (loop) return { state: core.toState(), reason: "infinite-loop", loop };
   }
