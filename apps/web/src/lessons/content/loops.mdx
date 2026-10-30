@@ -1,0 +1,40 @@
+A branch that goes **backwards** makes a **loop**: the same instructions run again and again.
+Every useful loop also needs a way out.
+
+<LessonSim
+  title="Countdown"
+  view="flow"
+  program={`
+        INP
+loop    BRZ done
+        OUT
+        SUB one
+        BRA loop
+done    HLT
+one     DAT 1
+`}
+  inputs="3"
+  predict
+/>
+
+Each time round, the program checks for zero, outputs the number and takes one off. When the
+number reaches zero, `BRZ` jumps out. In the flow graph, the loop's arrow counts how many times
+it has gone round.
+
+<Predict
+  question="With input 3, how many times does OUT run?"
+  choices={["2", "3", "4"]}
+  answer="3"
+  explain="It outputs 3, 2 and 1. When the accumulator reaches 0, BRZ leaves the loop before OUT."
+/>
+
+## Loops that never end
+
+If nothing changes the value a loop tests, it never stops. Try deleting the `SUB one` line and
+running the program. Joe's SIM notices that the machine has returned to exactly the same state,
+says the loop can never end, and offers to take you to the step where it began.
+
+## Test at the top, or at the bottom?
+
+Testing at the top (as above) means a loop can run zero times, which is right for an input of 0. Testing at the bottom always runs the loop at least once. The bug hunt **One too many** is
+about exactly this.

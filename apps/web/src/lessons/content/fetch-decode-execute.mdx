@@ -1,0 +1,47 @@
+The Little Man does the same three things over and over, for every instruction. This is the
+**instruction cycle**, and real processors do it billions of times a second.
+
+1. **Fetch.** Look at the <Highlight component="PC">program counter</Highlight> to find the
+   next mailbox. Copy its number to the <Highlight component="MAR">address register</Highlight>,
+   read that mailbox into the <Highlight component="MDR">data register</Highlight>, and copy it
+   onto the <Highlight component="IR">instruction register</Highlight>. Add one to the program
+   counter, ready for next time.
+2. **Decode.** The <Highlight component="CONTROL">control unit</Highlight> splits the
+   instruction into what to do and which mailbox.
+3. **Execute.** Do it: load, add, store, branch, input or output.
+
+Each of these small moves is a **micro-step**. Press **Micro** in the simulator below to go one
+micro-step at a time, and read the explanation underneath after each press. Press the back
+button to go backwards.
+
+<LessonSim
+  title="One micro-step at a time"
+  program={`
+        LDA 05
+        ADD 06
+        OUT
+        HLT
+        DAT 0
+        DAT 20
+        DAT 22
+`}
+  highlight="PC"
+/>
+
+<Predict
+  question="During the fetch, what happens to the program counter?"
+  choices={["It goes up by one", "It is set to zero", "Nothing"]}
+  answer="It goes up by one"
+  explain="After fetching, the program counter points at the next mailbox, so instructions run in order unless a branch changes it."
+/>
+
+## Why the program counter moves first
+
+The program counter goes up by one during the fetch, before the instruction runs. That is why
+a branch works: if the instruction is a branch, it simply overwrites the program counter with a
+new address. Next time round, the fetch starts from there.
+
+<Note>
+  Stepping by **Step** runs a whole instruction (all its micro-steps). Stepping by **Micro** shows
+  each register transfer. Both can go backwards.
+</Note>

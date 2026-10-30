@@ -1,0 +1,47 @@
+`ADD name` adds a mailbox to the accumulator; `SUB name` subtracts it. The answer stays in the
+accumulator. The <Highlight component="ALU">calculator</Highlight> does the work.
+
+<LessonSim
+  title="Add, then subtract"
+  program={`
+        INP
+        STA a
+        INP
+        STA b
+        LDA a
+        ADD b
+        OUT
+        LDA a
+        SUB b
+        OUT
+        HLT
+a       DAT
+b       DAT
+`}
+  inputs="9, 4"
+  predict
+/>
+
+## Three digits only
+
+Mailboxes and the accumulator hold three digits. If an answer does not fit, the thousands are
+lost: 600 + 600 gives 200, not 1200. Try it by changing the inputs to `600, 600`.
+
+<Predict
+  question="In the Classic dialect, what is 4 − 9?"
+  choices={["-5", "995 with the negative flag set", "0"]}
+  answer="995 with the negative flag set"
+  explain="Classic LMC has no negative numbers. The answer wraps round to 995, and the negative flag remembers that it went below zero."
+/>
+
+## The negative flag
+
+When a subtraction goes below zero, the Little Man raises a flag. Branch instructions look at
+it, as you will see next lesson. Any instruction that puts a new value in the accumulator
+clears it again.
+
+<Note>
+  Different textbooks and simulators disagree on negatives. Joe's SIM supports three **dialects**:
+  Classic (000 to 999, with the flag), Higginson-compatible and OCR (both −999 to 999). Change the
+  dialect in the simulator's settings and run the same subtraction to compare.
+</Note>

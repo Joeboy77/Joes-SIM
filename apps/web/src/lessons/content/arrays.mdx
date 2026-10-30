@@ -1,0 +1,50 @@
+An **array** is a row of mailboxes holding related values, like a table of squares. To read
+entry i, you need `LDA table + i`. LMC has no instruction for that, so how can a program reach
+entry i when it does not know i in advance?
+
+## Instructions are numbers
+
+Remember the stored-program idea from the first lesson: instructions are just numbers in
+memory. `LDA table` is 5 followed by table's address. If table is mailbox 07, it is 507. Add 3
+and you get 510, which is `LDA 10`: entry 3.
+
+So a program can **build the instruction it needs**, store it into the mailbox it is about to
+run, and then run it. This is **self-modifying code**.
+
+<LessonSim
+  title="Look it up"
+  program={`
+        INP
+        ADD load
+        STA fetch
+fetch   LDA table
+        OUT
+        HLT
+load    LDA table
+table   DAT 0
+        DAT 1
+        DAT 4
+        DAT 9
+        DAT 16
+`}
+  inputs="3"
+  memory
+  predict
+/>
+
+Watch mailbox 03 (`fetch`) in the memory grid. The `STA fetch` instruction overwrites it with
+a new `LDA`, and then the Little Man runs it.
+
+<Predict
+  question="With input 3, what does STA fetch write into mailbox 03?"
+  choices={["507", "510", "3"]}
+  answer="510"
+  explain="load holds LDA table, which is 507 because table is mailbox 07. Adding 3 gives 510, which means LDA 10: entry 3 of the table."
+/>
+
+## Why this matters
+
+Real processors have **indexed addressing** so programs do not need to rewrite themselves. But
+the idea that instructions are data underlies how computers load programs, how compilers work,
+and some security problems too. The **Look it up**, **Add up a table** and **Backwards**
+challenges practise it.

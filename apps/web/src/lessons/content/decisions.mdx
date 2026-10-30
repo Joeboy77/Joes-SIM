@@ -1,0 +1,52 @@
+So far every program has run straight down, one mailbox after another. **Branches** change
+which instruction runs next by changing the <Highlight component="PC">program counter</Highlight>.
+
+- `BRA name` always goes to `name`.
+- `BRZ name` goes to `name` if the accumulator is **zero**.
+- `BRP name` goes to `name` if the accumulator is **zero or positive** (the negative flag is
+  clear).
+
+If a `BRZ` or `BRP` does not branch, the program carries on to the next mailbox.
+
+## Comparing two numbers
+
+To compare a and b, subtract one from the other and test the answer.
+
+<LessonSim
+  title="The bigger one"
+  view="flow"
+  program={`
+        INP
+        STA a
+        INP
+        STA b
+        SUB a
+        BRP bbig
+        LDA a
+        OUT
+        HLT
+bbig    LDA b
+        OUT
+        HLT
+a       DAT
+b       DAT
+`}
+  inputs="3, 8"
+  predict
+/>
+
+This simulator shows the **flow graph**: each box is a run of instructions with no branches,
+and the arrows show where a branch can go. Run it twice, with `3, 8` and then `8, 3`, and watch
+which path lights up.
+
+<Predict
+  question="BRP branches when the accumulator is 0. With inputs 5 and 5, which number is output?"
+  choices={["a", "b", "Nothing"]}
+  answer="b"
+  explain="b − a is 0, and BRP treats 0 as positive, so it branches to the code that outputs b. Both are 5, so the answer is still right."
+/>
+
+<Note>
+  BRP treating zero as positive catches many people out. If you need "greater than zero", check for
+  zero first with BRZ.
+</Note>

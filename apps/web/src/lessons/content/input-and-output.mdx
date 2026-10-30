@@ -1,0 +1,49 @@
+Your first program needs just three instructions:
+
+- `INP` takes a number from the in-tray and puts it in the accumulator.
+- `OUT` copies the accumulator into the out-tray.
+- `HLT` stops the Little Man.
+
+<LessonSim
+  title="Echo"
+  program={`
+        INP
+        OUT
+        HLT
+`}
+  inputs="7"
+  predict
+/>
+
+This simulator has **predict mode** on. Before each instruction runs, it asks what will
+happen. Guess, then press **Check and step**. Guessing first, even when you are not sure, helps
+you learn faster than just watching.
+
+## Labels and layout
+
+A line of LMC has up to three parts: an optional **label**, the **mnemonic**, and sometimes an
+**address**. Anything after `//` is a comment for people to read.
+
+```
+loop    INP          // label, mnemonic
+        OUT          // just a mnemonic
+        BRA loop     // mnemonic and address (a label)
+```
+
+Labels give mailboxes names, so you never need to count addresses yourself.
+
+<Predict
+  question="What happens if you leave out HLT?"
+  choices={[
+    "The program stops anyway",
+    "The Little Man carries on into the next mailboxes",
+    "The simulator refuses to run",
+  ]}
+  answer="The Little Man carries on into the next mailboxes"
+  explain="Without HLT he keeps fetching whatever comes next, even data. The simulator warns you about this."
+/>
+
+## Try it
+
+Change the program so it outputs the number twice. Then try reading two numbers and outputting
+both. When you are ready, the **Echo** and **Say it twice** challenges check your answer.

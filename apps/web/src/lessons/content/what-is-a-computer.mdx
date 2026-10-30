@@ -1,0 +1,60 @@
+Every computer, from a phone to a supercomputer, does the same four things.
+
+- It takes **input**: key presses, touches, numbers from a sensor.
+- It **processes** that input: adding, comparing, deciding.
+- It keeps things in **memory**: the program, and the values it is working on.
+- It produces **output**: a picture, a sound, a number on a screen.
+
+## One memory for program and data
+
+In the 1940s, engineers working on the first electronic computers had an idea that every
+computer since has used. The program is not wired into the machine. It is stored in memory,
+as numbers, right next to the data it works on. This is called the **stored-program** or
+**von Neumann** design, after the mathematician John von Neumann, who described it in 1945.
+
+Because a program is just numbers in memory, you can load a different program without
+rebuilding the machine. You can even write a program that changes itself. You will do that in
+the last lesson.
+
+## The parts of the processor
+
+The processor has three main parts:
+
+- the **control unit**, which fetches each instruction and works out what it means;
+- the **arithmetic and logic unit (ALU)**, which does the sums;
+- a few **registers**: tiny, fast stores that hold the values being worked on right now.
+
+Everything else (memory, input and output) is connected to the processor by **buses**, the
+wires that carry numbers between the parts.
+
+<Predict
+  question="Where is a program kept while it runs?"
+  choices={["In the ALU", "In memory", "In the output"]}
+  answer="In memory"
+  explain="The stored-program idea: instructions sit in memory as numbers, alongside the data."
+/>
+
+## A computer small enough to see inside
+
+Real processors are far too fast and too complicated to watch. The **Little Man Computer**
+(LMC) is a model with only a handful of parts and eleven instructions, slow enough to follow
+one step at a time. It was designed in 1965 by Stuart Madnick to teach exactly this.
+
+Below is a tiny LMC program. Press **Run** and watch numbers travel along the buses between
+the parts. You do not need to understand it yet.
+
+<LessonSim
+  title="A computer at work"
+  program={`
+        INP
+        STA first
+        INP
+        ADD first
+        OUT
+        HLT
+first   DAT
+`}
+  inputs="3, 4"
+/>
+
+In the next lesson you will meet the Little Man and his room.

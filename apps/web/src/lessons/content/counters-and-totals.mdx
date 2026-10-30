@@ -1,0 +1,53 @@
+Most loop problems use one of two patterns.
+
+## A counter
+
+Keep a number in a mailbox and change it by one each time round. Stop when it reaches a
+target. This is how you repeat something **n** times.
+
+## A running total
+
+Keep a total in a mailbox that starts at 0. Each time round, load it, add the next value and
+store it back. This is how you add up many numbers.
+
+The program below uses both: it reads n, then n numbers, and outputs their total.
+
+<LessonSim
+  title="Add up n numbers"
+  program={`
+        INP
+        STA n
+loop    LDA n
+        BRZ done
+        SUB one
+        STA n
+        INP
+        ADD total
+        STA total
+        BRA loop
+done    LDA total
+        OUT
+        HLT
+n       DAT
+total   DAT 0
+one     DAT 1
+`}
+  inputs="3, 10, 20, 30"
+  memory
+/>
+
+Open the **Trace** panel in the full simulator to see a row for every instruction. In
+**fill-in mode** the values are hidden: work them out yourself, as you would in an exam, then
+check your answers.
+
+<Predict
+  question="What goes wrong if the program forgets STA total?"
+  choices={["The total is always 0", "The program never stops", "It adds each number twice"]}
+  answer="The total is always 0"
+  explain="ADD total works out the new total, but without STA it is never written back, so total stays 0. The bug hunt 'The total that never grows' is this mistake."
+/>
+
+## Multiplying
+
+LMC cannot multiply, but a counter and a total together can: add a to the total, b times. Try
+the **Multiply** challenge.

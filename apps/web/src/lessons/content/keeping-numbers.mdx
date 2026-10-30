@@ -1,0 +1,41 @@
+The accumulator holds only one number. To work with two, you need somewhere to keep the first
+while you read the second. That is what mailboxes are for.
+
+- `STA name` stores the accumulator in a mailbox. The accumulator keeps its value.
+- `LDA name` loads a mailbox into the accumulator. The mailbox keeps its value.
+- `name DAT 5` reserves a mailbox called `name` that starts as 5. `DAT` on its own starts at 0.
+
+`DAT` lines are data, not instructions, so put them **after** the `HLT`. Otherwise the Little
+Man would try to run them.
+
+<LessonSim
+  title="Swap two numbers"
+  program={`
+        INP
+        STA first
+        INP
+        OUT
+        LDA first
+        OUT
+        HLT
+first   DAT
+`}
+  inputs="1, 2"
+  memory
+  predict
+/>
+
+Watch the memory grid as you step. A mailbox flashes with **↑** when it is written and **↓**
+when it is read.
+
+<Predict
+  question="After STA first, what does the accumulator hold?"
+  choices={["0", "The same number as before", "Nothing"]}
+  answer="The same number as before"
+  explain="STA copies the accumulator into the mailbox. Copying does not empty it."
+/>
+
+## Reading a mailbox nobody filled
+
+If you `LDA` from a mailbox that was never given a value, you get 0. The simulator points this
+out, because it is usually a mistake: a missing `STA`, or a `DAT` without its starting value.

@@ -1,0 +1,59 @@
+Imagine a small room with a person inside: the **Little Man**. He cannot think for himself,
+but he follows instructions perfectly, one at a time.
+
+## The room
+
+- A wall of **100 mailboxes**, numbered 00 to 99. Each holds one number from 000 to 999. This
+  is the <Highlight component="MEMORY">memory</Highlight>.
+- A **counter** that shows which mailbox to look at next. This is the
+  <Highlight component="PC">program counter</Highlight>.
+- A **calculator** that can add and subtract. Whatever it shows is the
+  <Highlight component="ACC">accumulator</Highlight>, the number the Little Man is working on.
+- An **in-tray** for numbers coming in, and an **out-tray** for answers going out.
+
+Point at any of the highlighted words above to see that part light up in the simulator.
+
+<LessonSim
+  title="The room, from above"
+  view="story"
+  program={`
+        INP
+        OUT
+        HLT
+`}
+  inputs="42"
+  memory
+/>
+
+## Instructions are numbers
+
+Each mailbox holds a three-digit number. The Little Man reads the first digit as **what to
+do** and the last two as **which mailbox**. So 512 means "load (5) from mailbox 12", and 306
+means "store (3) into mailbox 06".
+
+| Code | Mnemonic | What the Little Man does                 |
+| ---- | -------- | ---------------------------------------- |
+| 1xx  | ADD      | Add the number in mailbox xx             |
+| 2xx  | SUB      | Subtract the number in mailbox xx        |
+| 3xx  | STA      | Store the accumulator in mailbox xx      |
+| 5xx  | LDA      | Load the number in mailbox xx            |
+| 6xx  | BRA      | Go to mailbox xx next                    |
+| 7xx  | BRZ      | Go to mailbox xx if the accumulator is 0 |
+| 8xx  | BRP      | Go to mailbox xx if it is 0 or more      |
+| 901  | INP      | Take a number from the in-tray           |
+| 902  | OUT      | Put the accumulator in the out-tray      |
+| 000  | HLT      | Stop                                     |
+
+We write programs using the short names (mnemonics) and the simulator turns them into numbers.
+
+<Predict
+  question="What does the instruction 902 do?"
+  choices={["Loads mailbox 02", "Outputs the accumulator", "Stops"]}
+  answer="Outputs the accumulator"
+  explain="9 means input or output, and 02 picks output."
+/>
+
+<Note>
+  In the simulator, the story view shows the room and the datapath view shows the same machine as a
+  real processor diagram. Switch between them with the View menu, or press V.
+</Note>
