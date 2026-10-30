@@ -18,7 +18,7 @@ the University of Ghana, Legon, and then for students, teachers and self-learner
 | 0     | Foundation: monorepo, app shell, themes, tests, CI                                    | Done        |
 | 1     | Engine, assembler and dialects                                                        | Done        |
 | 2     | Core simulator interface                                                              | Done        |
-| 3     | Understanding tools (narration, time travel, traces)                                  | Not started |
+| 3     | Understanding tools (narration, time travel, traces)                                  | Done        |
 | 4     | Practice, lessons and saving                                                          | Not started |
 | 5     | Sharing, offline, translation and public launch                                       | Not started |
 | 6–10  | Extended machine, pipeline and cache, multicore, compiler, custom machines and RISC-V | Not started |

@@ -35,4 +35,6 @@ cache) can be added in later phases without engine changes.
 The brief asks for 60 frames per second on a mid-range Android phone at normal speed. In
 headless Chromium with Pixel 7 emulation and the CPU slowed 4×, both views averaged 60.0 fps
 over 5 seconds of a running countdown, with no frame longer than 16.8 ms. No real phone has been
-measured yet, so this check is carried into Phase 3.
+measured yet. After Phase 3, the same test with the heatmap on still averaged 60.0 fps
+in all three views (datapath, story and flow graph). The check stays open until it can be
+measured on a device.
