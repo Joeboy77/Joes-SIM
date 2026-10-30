@@ -1,2 +1,7 @@
-// Lessons, challenges and teacher packs: content arrives from Phase 4.
-export {};
+/**
+ * @joes-sim/content: lessons, challenges and teacher packs. Text and programs are CC BY 4.0;
+ * code is MIT.
+ */
+export * from "./challenges/types";
+export * from "./challenges/run";
+export * from "./challenges/library";

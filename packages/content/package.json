@@ -2,7 +2,7 @@
   "name": "@joes-sim/content",
   "version": "0.0.0",
   "private": true,
-  "description": "Lessons, challenges and teacher packs.",
+  "description": "Lessons, challenges and teacher packs (content under CC BY 4.0, code under MIT).",
   "license": "MIT",
   "type": "module",
   "exports": {
@@ -13,5 +13,8 @@
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run --passWithNoTests",
     "test:coverage": "vitest run --coverage --passWithNoTests"
+  },
+  "dependencies": {
+    "@joes-sim/engine": "workspace:*"
   }
 }

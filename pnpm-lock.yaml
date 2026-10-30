@@ -114,7 +114,11 @@ importers:
 
   packages/compiler: {}
 
-  packages/content: {}
+  packages/content:
+    dependencies:
+      '@joes-sim/engine':
+        specifier: workspace:*
+        version: link:../engine
 
   packages/embed: {}
 
