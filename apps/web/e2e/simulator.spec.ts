@@ -15,11 +15,19 @@ async function setSpeed(page: Page, speed: string) {
   await page.getByLabel("Speed").selectOption(speed);
 }
 
+/** Shows a panel: a tab on phones; on larger screens, a side-panel tab if it has one. */
 async function showTab(page: Page, name: string) {
   const tab = page
     .getByRole("navigation", { name: "Simulator panels" })
-    .getByRole("button", { name });
-  if (await tab.isVisible()) await tab.click();
+    .getByRole("button", { name, exact: true });
+  if (await tab.isVisible()) return tab.click();
+  const side = page.getByRole("group", { name: "Side panels" }).getByRole("button", { name });
+  if (await side.isVisible()) await side.click();
+}
+
+async function setView(page: Page, view: string) {
+  await openSettings(page);
+  await page.getByLabel("View", { exact: true }).selectOption(view);
 }
 
 async function typeProgram(page: Page, source: string) {
@@ -61,7 +69,7 @@ test("a mistake is explained with a suggestion and the machine waits until it is
 }) => {
   await typeProgram(page, "loop    INP\n        BRA lop");
   await expect(status(page)).toContainText("1 error to fix");
-  await showTab(page, "Inputs & output");
+  await showTab(page, "Explain");
   await expect(page.getByText("Label 'lop' is not defined. Did you mean 'loop'?")).toBeVisible();
 });
 
@@ -108,13 +116,12 @@ test("switching view and pausing mid-animation always shows the true state", asy
   await setSpeed(page, "slow");
   await page.getByRole("button", { name: "Run", exact: true }).click();
   await page.waitForTimeout(1200);
-  await openSettings(page);
-  await page.getByRole("button", { name: "Switch to story view" }).click();
+  await setView(page, "story");
   await page.getByRole("button", { name: "Pause" }).click();
   await showTab(page, "Machine");
   const story = page.getByRole("img", { name: /Story view/ });
   await expect(story).toBeVisible();
-  await page.getByRole("button", { name: "Switch to datapath view" }).click();
+  await setView(page, "datapath");
   await expect(page.getByRole("img", { name: /Datapath/ })).toBeVisible();
 });
 
@@ -126,7 +133,7 @@ test("the shortcut sheet opens with ? and closes", async ({ page }) => {
   await expect(dialog).toBeHidden();
 });
 
-test("both views have no accessibility violations", async ({ page }) => {
+test("all three views have no accessibility violations", async ({ page }) => {
   for (let i = 0; i < 2; i++) await page.keyboard.press("s");
   const scan = () =>
     new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze();
@@ -135,12 +142,14 @@ test("both views have no accessibility violations", async ({ page }) => {
       (v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`,
     ),
   ).toEqual([]);
-  await page.keyboard.press("v");
-  expect(
-    (await scan()).violations.map(
-      (v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`,
-    ),
-  ).toEqual([]);
+  for (const panel of ["v", "v"]) {
+    await page.keyboard.press(panel);
+    expect(
+      (await scan()).violations.map(
+        (v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`,
+      ),
+    ).toEqual([]);
+  }
 });
 
 test("a branch shows where it goes and whether it was taken", async ({ page }) => {
@@ -155,3 +164,135 @@ test("a branch shows where it goes and whether it was taken", async ({ page }) =
     /branch target, not taken/,
   );
 });
+
+test("the narration explains each step, at beginner and technical level", async ({ page }) => {
+  await page.keyboard.press("m");
+  await showTab(page, "Explain");
+  const explain = page.getByRole("region", { name: "What just happened" });
+  await expect(explain).toContainText(
+    "The Little Man reads the program counter: the next instruction is in mailbox 00.",
+  );
+  await page.getByRole("button", { name: "Technical" }).click();
+  await expect(explain).toContainText("Fetch: copy the PC (00) into the MAR.");
+  await page.getByRole("button", { name: "Beginner" }).click();
+  for (let i = 0; i < 5; i++) await page.keyboard.press("m");
+  await page.keyboard.press("s");
+  await expect(explain).toContainText(
+    "The instruction is 306, so the Little Man stores the accumulator (3) in mailbox 06.",
+  );
+});
+
+test("the trace table fills in, jumps to a step, exports and checks answers", async ({ page }) => {
+  await setSpeed(page, "instant");
+  await page.getByRole("button", { name: "Run", exact: true }).click();
+  await expect(status(page)).toContainText("Finished after 6 instructions");
+  await showTab(page, "Trace");
+  const table = page.getByRole("table", { name: /Trace table/ });
+  await expect(table.getByRole("row")).toHaveCount(7);
+  await expect(table.getByRole("row").nth(4)).toContainText("ADD first");
+  await table.getByRole("button", { name: "Go to step 2" }).click();
+  await expect(status(page)).toContainText("Step 2.");
+
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export CSV" }).click();
+  const csv = await download;
+  expect(csv.suggestedFilename()).toBe("trace.csv");
+
+  await page.getByRole("button", { name: "Fill-in mode" }).click();
+  await page.getByLabel("ACC, step 1", { exact: true }).fill("3");
+  await page.getByLabel("ACC, step 2", { exact: true }).fill("5");
+  await page.getByRole("button", { name: "Check my answers" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "correct" })).toContainText(
+    /^1 of \d+ correct/,
+  );
+  await expect(page.getByLabel("ACC, step 2", { exact: true })).toHaveAttribute(
+    "aria-invalid",
+    "true",
+  );
+});
+
+test("an error offers the step that caused it, and hints one tier at a time", async ({ page }) => {
+  await typeProgram(page, "        LDA v\n        STA x\nx       DAT 0\nv       DAT 450");
+  await setSpeed(page, "fast");
+  await page.getByRole("button", { name: "Run", exact: true }).click();
+  await expect(status(page)).toContainText("Stopped at mailbox 02");
+  await showTab(page, "Explain");
+  await page.getByRole("button", { name: "Show a hint" }).first().click();
+  await expect(page.getByText("Nudge:")).toBeVisible();
+  await page.getByRole("button", { name: "Show more" }).first().click();
+  await expect(page.getByText("Pointer:")).toBeVisible();
+  await page.getByRole("button", { name: "Go to the step that caused this (step 2)" }).click();
+  await expect(status(page)).toContainText("Step 1. Next instruction at mailbox 01");
+});
+
+test("the heatmap and number card show how each mailbox was used", async ({ page }) => {
+  await setSpeed(page, "instant");
+  await page.getByRole("button", { name: "Run", exact: true }).click();
+  await expect(status(page)).toContainText("Finished");
+  await showTab(page, "Machine");
+  await page.getByRole("button", { name: "Heatmap" }).click();
+  const first = page.getByRole("button", { name: /^Mailbox 06/ });
+  await expect(first).toHaveAccessibleName(/used as data/);
+  await expect(first).toHaveAccessibleName(/read 1, written 1 times/);
+  await first.focus();
+  await expect(page.getByText(/Two's complement \(10-bit\) 00 0000 0011/)).toBeVisible();
+});
+
+test("run until stops when a condition becomes true", async ({ page }) => {
+  await showTab(page, "Watch");
+  await page.getByLabel("Stop when").selectOption("acc");
+  await page.getByLabel("Is", { exact: true }).selectOption("==");
+  await page.getByLabel("Value", { exact: true }).fill("4");
+  await page.getByRole("button", { name: "Add condition" }).click();
+  await expect(page.getByText("Stop when the accumulator is 4")).toBeVisible();
+  await setSpeed(page, "fast");
+  await page.getByRole("button", { name: "Run", exact: true }).click();
+  await expect(status(page)).toContainText("Stopped after step 3, because the accumulator is 4.");
+  await expect(page.getByRole("cell", { name: /^4/ }).first()).toBeVisible();
+});
+
+test("the flow graph counts each trip round a loop", async ({ page }) => {
+  await typeProgram(
+    page,
+    "        INP\nloop    OUT\n        SUB one\n        BRP loop\n        HLT\none     DAT 1",
+  );
+  await showTab(page, "Inputs & output");
+  await page.getByLabel(/Values for INP to read/).fill("3");
+  await setView(page, "flow");
+  await setSpeed(page, "instant");
+  await page.getByRole("button", { name: "Run", exact: true }).click();
+  await expect(status(page)).toContainText("Finished");
+  await showTab(page, "Machine");
+  await expect(page.getByRole("img", { name: /Flow graph/ })).toHaveAccessibleName(
+    /The loop back to mailbox 01 has gone round 3 times/,
+  );
+});
+
+for (const theme of ["light", "dark", "high-contrast"]) {
+  test(`the trace, watch and heatmap have no accessibility violations (${theme})`, async ({
+    page,
+  }) => {
+    await page.addInitScript((t) => localStorage.setItem("joes-sim:theme", t), theme);
+    await page.goto("/sim");
+    await setSpeed(page, "instant");
+    await page.getByRole("button", { name: "Run", exact: true }).click();
+    await expect(status(page)).toContainText("Finished");
+    const scan = async () =>
+      (
+        await new AxeBuilder({ page })
+          .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
+          .analyze()
+      ).violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`);
+    await showTab(page, "Machine");
+    await page.getByRole("button", { name: "Heatmap" }).click();
+    expect(await scan()).toEqual([]);
+    await showTab(page, "Trace");
+    expect(await scan()).toEqual([]);
+    await page.getByRole("button", { name: "Fill-in mode" }).click();
+    await page.getByLabel("ACC, step 1", { exact: true }).fill("9");
+    await page.getByRole("button", { name: "Check my answers" }).click();
+    expect(await scan()).toEqual([]);
+    await showTab(page, "Watch");
+    expect(await scan()).toEqual([]);
+  });
+}
