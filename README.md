@@ -19,7 +19,7 @@ the University of Ghana, Legon, and then for students, teachers and self-learner
 | 1     | Engine, assembler and dialects                                                        | Done        |
 | 2     | Core simulator interface                                                              | Done        |
 | 3     | Understanding tools (narration, time travel, traces)                                  | Done        |
-| 4     | Practice, lessons and saving                                                          | Not started |
+| 4     | Practice, lessons and saving                                                          | Done        |
 | 5     | Sharing, offline, translation and public launch                                       | Not started |
 | 6–10  | Extended machine, pipeline and cache, multicore, compiler, custom machines and RISC-V | Not started |
 
@@ -56,13 +56,13 @@ exact rules of each dialect.
 ## Repository layout
 
 ```
-apps/web/            Next.js app: site, simulator (/sim) and embed (/embed)
+apps/web/            Next.js app: simulator (/sim), lessons (/learn), challenges, progress, embed
 packages/engine/     Pure TypeScript machines, dialects, assembler, analysis. No UI, no browser APIs
 packages/narration/  Engine events to plain-language sentences
 packages/compiler/   Little Language to LMC compiler
 packages/ui/         Shared React components and design tokens
 packages/embed/      The <joes-sim> web component
-packages/content/    Lessons, challenges and teacher packs
+packages/content/    Challenges, their test runner, and (later) teacher packs
 docs/decisions/      One short note per design decision
 docs/specs/          Instruction set and dialect specifications
 ```
@@ -76,8 +76,9 @@ ratios, and the browser tests run axe-core on every page in every theme.
 
 ## Licence
 
-Code is released under the [MIT licence](LICENSE). Lessons, challenges and other learning content
-in `packages/content` are released under [CC BY 4.0](packages/content/LICENSE).
+Code is released under the [MIT licence](LICENSE). Learning content (the challenges in
+`packages/content` and the lessons in `apps/web/src/lessons/content`) is released under
+[CC BY 4.0](packages/content/LICENSE).
 
 Joe's SIM is built from the published Little Man Computer model. It does not copy code, layout,
 graphics or text from any other simulator.

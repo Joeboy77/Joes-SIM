@@ -25,3 +25,9 @@ One file per decision, named `NNNN-short-title.md`, each with four headings:
 | 0018 | [The trace table and fill-in mode](0018-trace-table.md)                              |
 | 0019 | [Watches, run-until conditions and number views](0019-watches-conditions-numbers.md) |
 | 0020 | [Side panels and the third view](0020-side-panels-and-views.md)                      |
+| 0021 | [Keeping work on the device](0021-on-device-storage.md)                              |
+| 0022 | [Challenges, scores and the model solution](0022-challenges.md)                      |
+| 0023 | [Lessons in MDX](0023-lessons.md)                                                    |
+| 0024 | [Predict mode](0024-predict-mode.md)                                                 |
+| 0025 | [Backups and .lmc files](0025-backups-and-lmc-files.md)                              |
+| 0026 | [Working offline (first step)](0026-offline.md)                                      |
