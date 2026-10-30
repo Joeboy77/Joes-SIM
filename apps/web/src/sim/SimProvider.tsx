@@ -6,8 +6,14 @@ import { createSimStore, type SimStore, type SimStoreApi } from "./store";
 
 const SimContext = createContext<SimStoreApi | null>(null);
 
-export function SimProvider({ children }: { children: ReactNode }) {
-  const [store] = useState(() => createSimStore());
+export function SimProvider({
+  children,
+  initial,
+}: {
+  children: ReactNode;
+  initial?: Parameters<typeof createSimStore>[0];
+}) {
+  const [store] = useState(() => createSimStore(initial));
   return <SimContext.Provider value={store}>{children}</SimContext.Provider>;
 }
 

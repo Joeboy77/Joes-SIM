@@ -170,7 +170,10 @@ export function Editor() {
       keymap.of([...defaultKeymap, ...historyKeymap, ...completionKeymap, indentWithTab]),
       EditorView.contentAttributes.of({ "aria-label": "Program code", spellcheck: "false" }),
       EditorView.updateListener.of((u) => {
-        if (u.docChanged) store.getState().setSource(u.state.doc.toString());
+        if (!u.docChanged) return;
+        const text = u.state.doc.toString();
+        // Changes made by the sync below come from the store already; only report the learner's.
+        if (text !== store.getState().source) store.getState().setSource(text);
       }),
       theme,
     ];
@@ -208,6 +211,11 @@ export function Editor() {
     };
     sync();
     return store.subscribe((s, prev) => {
+      // The program can change from outside the editor: opening a file, a draft, a backup.
+      const view = viewRef.current;
+      if (view && s.source !== prev.source && s.source !== view.state.doc.toString()) {
+        view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: s.source } });
+      }
       if (
         s.assembled !== prev.assembled ||
         s.breakpoints !== prev.breakpoints ||

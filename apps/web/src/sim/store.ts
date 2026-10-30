@@ -123,6 +123,8 @@ export interface SimActions {
   back(): void;
   backInstruction(): void;
   jumpToCycle(cycle: number): void;
+  /** Runs from the start to a cycle, even past the end of the timeline (to open a step). */
+  goToCycle(cycle: number): void;
   /** One playback tick. Returns false when playback should stop. */
   tick(): boolean;
   play(): void;
@@ -343,6 +345,17 @@ export function createSimStore(
         const s = replay(target);
         if (!s) return;
         set({ history: new History(s), playing: false });
+        moveTo(s, [], "jump");
+      },
+
+      goToCycle(cycle) {
+        const s = replay(Math.max(0, cycle));
+        if (!s) return;
+        set({
+          history: new History(s),
+          playing: false,
+          maxCycle: Math.max(get().maxCycle, s.cycles),
+        });
         moveTo(s, [], "jump");
       },
 

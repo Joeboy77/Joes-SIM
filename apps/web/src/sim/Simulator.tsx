@@ -14,7 +14,10 @@ import { StatusLine } from "./panels/StatusLine";
 import { TracePanel } from "./panels/TracePanel";
 import { WatchPanel } from "./panels/WatchPanel";
 import { SimProvider, useSimState } from "./SimProvider";
+import { PredictPanel } from "./predict/PredictPanel";
 import { usePlaybackLoop } from "./usePlayback";
+import { FilesMenu } from "./workspace/FilesMenu";
+import { WorkspaceProvider } from "./workspace/Workspace";
 
 // On phones every part is a tab. On larger screens the inputs and output stay in view and the
 // other side panels share tabs.
@@ -84,9 +87,12 @@ function Layout() {
   return (
     <div className="flex h-dvh flex-col">
       <header className="flex items-center justify-between gap-3 border-b border-border bg-surface px-3 py-2">
-        <Link href="/" className="font-bold">
-          Joe&apos;s SIM
-        </Link>
+        <div className="flex min-w-0 items-center gap-3">
+          <Link href="/" className="font-bold">
+            Joe&apos;s SIM
+          </Link>
+          <FilesMenu />
+        </div>
         <h1 className="sr-only">Simulator</h1>
         <div className="flex items-center gap-2">
           <Shortcuts />
@@ -157,6 +163,7 @@ function Layout() {
             ))}
           </div>
           <div className={`space-y-6 ${sideClass("explain")}`}>
+            <PredictPanel />
             <ExplainPanel />
             <ProblemsPanel />
           </div>
@@ -175,7 +182,9 @@ function Layout() {
 export function Simulator() {
   return (
     <SimProvider>
-      <Layout />
+      <WorkspaceProvider>
+        <Layout />
+      </WorkspaceProvider>
     </SimProvider>
   );
 }
