@@ -8,6 +8,7 @@
  */
 import {
   History,
+  Trace,
   analyse,
   assemble,
   createState,
@@ -16,17 +17,23 @@ import {
   run,
   step,
   type AssembleResult,
+  type Component,
+  type ConditionTarget,
   type DialectId,
   type Finding,
   type InfiniteLoop,
   type MachineState,
   type MicroStep,
+  type RunCondition,
   type StopReason,
+  conditionMet,
 } from "@joes-sim/engine";
+import type { Level } from "@joes-sim/narration";
 import { createStore } from "zustand/vanilla";
 import { SPEEDS, type Speed } from "./speeds";
 
-export type ViewMode = "datapath" | "story";
+export type ViewMode = "datapath" | "story" | "flow";
+export const VIEW_ORDER: readonly ViewMode[] = ["datapath", "story", "flow"];
 export type Direction = "forward" | "back" | "jump";
 
 export const STARTER_PROGRAM = `// Add two numbers
@@ -65,6 +72,8 @@ export interface SimState {
   inputError: string | null;
   assembled: AssembleResult;
   findings: Finding[];
+  /** How many inputs were typed in before the run, as opposed to given while it waited. */
+  typedInputs: number;
 
   /** The machine at cycle 0, with every input given so far (typed in advance or during the run). */
   initial: MachineState | null;
@@ -77,6 +86,9 @@ export interface SimState {
   stepId: number;
   /** Furthest cycle reached in this run, the end of the timeline. */
   maxCycle: number;
+  /** One row per completed instruction, kept in step with `state`. Mutable: read `traceVersion`. */
+  trace: Trace | null;
+  traceVersion: number;
 
   breakpoints: number[];
   speed: Speed;
@@ -88,6 +100,17 @@ export interface SimState {
   busy: boolean;
   /** Playback stopped only because INP needed a value; giving one resumes it. */
   resumeAfterInput: boolean;
+
+  level: Level;
+  heatmap: boolean;
+  /** Values shown in the Watch panel. */
+  watches: ConditionTarget[];
+  /** Run until any of these is true. */
+  conditions: RunCondition[];
+  /** Which condition stopped the last run. */
+  metCondition: number | null;
+  /** A machine part the learner is pointing at in the narration, to highlight in the views. */
+  hoverTerm: Component | null;
 }
 
 export interface SimActions {
@@ -113,7 +136,14 @@ export interface SimActions {
   toggleBreakpoint(address: number): void;
   provideInput(value: number): void;
   /** Applies the result of an instant run (from the worker or the main thread). */
-  applyRun(state: MachineState, reason: StopReason, loop?: InfiniteLoop): void;
+  applyRun(state: MachineState, reason: StopReason, loop?: InfiniteLoop, condition?: number): void;
+  setLevel(level: Level): void;
+  toggleHeatmap(): void;
+  addWatch(target: ConditionTarget): void;
+  removeWatch(index: number): void;
+  addCondition(condition: RunCondition): void;
+  removeCondition(index: number): void;
+  setHoverTerm(term: Component | null): void;
 }
 
 export type SimStore = SimState & SimActions;
@@ -128,6 +158,10 @@ function build(source: string, dialect: DialectId, inputText: string) {
   return {
     assembled,
     findings,
+    typedInputs: parsed.values.length,
+    trace: initial ? new Trace(initial) : null,
+    traceVersion: 0,
+    metCondition: null,
     inputError: parsed.error,
     initial,
     state: initial,
@@ -157,6 +191,14 @@ export function createSimStore(
   const inputText = initial.inputText ?? "3, 4";
 
   return createStore<SimStore>()((set, get) => {
+    /** Brings the trace up to the current state. Call after every change of position. */
+    const syncTrace = () => {
+      const { trace, state } = get();
+      if (!trace || !state) return;
+      trace.syncTo(state.cycles);
+      if (trace.version !== get().traceVersion) set({ traceVersion: trace.version });
+    };
+
     /** Records forward micro-steps from the current state. */
     const advance = (granularity: "micro" | "instruction") => {
       const { state, history, maxCycle, stepId } = get();
@@ -184,7 +226,9 @@ export function createSimStore(
         stepId: stepId + 1,
         maxCycle: Math.max(maxCycle, s.cycles),
         stopReason: stopReasonOf(s),
+        metCondition: null,
       });
+      syncTrace();
       return s;
     };
 
@@ -203,7 +247,9 @@ export function createSimStore(
         direction,
         stepId: get().stepId + 1,
         stopReason: stopReasonOf(state),
+        metCondition: null,
       });
+      syncTrace();
     };
 
     return {
@@ -217,6 +263,11 @@ export function createSimStore(
       view: "datapath",
       presentation: false,
       busy: false,
+      level: "beginner",
+      heatmap: false,
+      watches: [{ kind: "acc" }, { kind: "pc" }],
+      conditions: [],
+      hoverTerm: null,
 
       setSource(next) {
         const { dialect, inputText, stepId } = get();
@@ -296,7 +347,7 @@ export function createSimStore(
       },
 
       tick() {
-        const { speed, breakpoints, loop } = get();
+        const { speed, breakpoints, loop, conditions } = get();
         const unit = SPEEDS[speed].unit;
         if (unit === "none") return false;
         const next = advance(unit);
@@ -306,6 +357,11 @@ export function createSimStore(
         }
         if (next.stage === 0 && breakpoints.includes(next.pc)) {
           set({ playing: false, stopReason: "breakpoint" });
+          return false;
+        }
+        const met = next.stage === 0 ? conditions.findIndex((c) => conditionMet(c, next)) : -1;
+        if (met >= 0) {
+          set({ playing: false, stopReason: "condition", metCondition: met });
           return false;
         }
         if (loop && next.stage === 0 && next.cycles >= loop.startCycle + loop.length) {
@@ -359,19 +415,22 @@ export function createSimStore(
         const { state, initial, resumeAfterInput, speed } = get();
         if (!state || !initial) return;
         const next = engineProvideInput(state, value);
+        const inputs = [...initial.inputs, value];
         // Keep the starting state in step, so replays read this input too. Stepping back past
         // this point replays from the start, which includes the new input.
+        get().trace?.setInputs(inputs);
         set({
-          initial: { ...initial, inputs: [...initial.inputs, value] },
+          initial: { ...initial, inputs },
           state: next,
           history: new History(next),
           stopReason: null,
           resumeAfterInput: false,
           playing: resumeAfterInput && SPEEDS[speed].unit !== "none",
         });
+        syncTrace();
       },
 
-      applyRun(state, reason, loop) {
+      applyRun(state, reason, loop, condition) {
         set({
           state,
           history: new History(state),
@@ -381,9 +440,41 @@ export function createSimStore(
           maxCycle: Math.max(get().maxCycle, state.cycles),
           stopReason: reason,
           loop: loop ?? null,
+          metCondition: condition ?? null,
           playing: false,
           busy: false,
         });
+        syncTrace();
+      },
+
+      setLevel(level) {
+        set({ level });
+      },
+
+      toggleHeatmap() {
+        set({ heatmap: !get().heatmap });
+      },
+
+      addWatch(target) {
+        const { watches } = get();
+        if (watches.some((w) => JSON.stringify(w) === JSON.stringify(target))) return;
+        set({ watches: [...watches, target] });
+      },
+
+      removeWatch(index) {
+        set({ watches: get().watches.filter((_, i) => i !== index) });
+      },
+
+      addCondition(condition) {
+        set({ conditions: [...get().conditions, condition] });
+      },
+
+      removeCondition(index) {
+        set({ conditions: get().conditions.filter((_, i) => i !== index), metCondition: null });
+      },
+
+      setHoverTerm(term) {
+        if (term !== get().hoverTerm) set({ hoverTerm: term });
       },
     };
   });

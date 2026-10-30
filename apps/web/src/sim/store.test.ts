@@ -200,4 +200,93 @@ describe("simulator store", () => {
     store.getState().pause();
     expect(store.getState().playing).toBe(false);
   });
+
+  it("keeps the trace in step with stepping, stepping back and jumps", () => {
+    const store = createSimStore();
+    const rows = () => store.getState().trace?.rows.length;
+    store.getState().stepInstruction();
+    store.getState().stepInstruction();
+    expect(rows()).toBe(2);
+    for (let i = 0; i < 5; i++) store.getState().stepMicro();
+    expect(rows()).toBe(2); // INP takes six micro-steps: four fetch, decode, input
+    store.getState().stepMicro();
+    expect(rows()).toBe(3);
+    store.getState().backInstruction();
+    expect(rows()).toBe(store.getState().state?.cycles);
+    store.getState().jumpToCycle(0);
+    expect(rows()).toBe(0);
+    const result = run(loaded(store));
+    store.getState().applyRun(result.state, result.reason);
+    expect(rows()).toBe(6);
+    expect(store.getState().traceVersion).toBeGreaterThan(0);
+    store.getState().jumpToCycle(4);
+    expect(store.getState().trace?.rows.map((r) => r.mnemonic)).toEqual([
+      "INP",
+      "STA",
+      "INP",
+      "ADD",
+    ]);
+  });
+
+  it("records inputs given while waiting in the trace", () => {
+    const store = createSimStore({ inputText: "3" });
+    for (let i = 0; i < 3; i++) store.getState().stepInstruction();
+    expect(store.getState().state?.status).toBe("waiting-input");
+    store.getState().provideInput(4);
+    for (let i = 0; i < 4; i++) store.getState().stepInstruction();
+    expect(
+      store
+        .getState()
+        .trace?.rows.map((r) => r.input)
+        .filter((v) => v !== undefined),
+    ).toEqual([3, 4]);
+    expect(store.getState().typedInputs).toBe(1);
+  });
+
+  it("stops playback after the instruction that meets a run-until condition", () => {
+    const store = createSimStore({ source: COUNTDOWN, inputText: "3" });
+    store.getState().addCondition({ target: { kind: "acc" }, op: "==", value: 1 });
+    store.getState().setSpeed("fast");
+    store.getState().play();
+    while (store.getState().tick()) {
+      /* keep ticking */
+    }
+    expect(store.getState().stopReason).toBe("condition");
+    expect(store.getState().metCondition).toBe(0);
+    expect(store.getState().state?.acc).toBe(1);
+    store.getState().stepInstruction();
+    expect(store.getState().metCondition).toBeNull();
+    store.getState().removeCondition(0);
+    expect(store.getState().conditions).toEqual([]);
+  });
+
+  it("records which condition stopped an instant run", () => {
+    const store = createSimStore();
+    const result = run(loaded(store), {
+      conditions: [{ target: { kind: "outputs" }, op: ">", value: 0 }],
+    });
+    store.getState().applyRun(result.state, result.reason, result.loop, result.condition);
+    expect(store.getState()).toMatchObject({ stopReason: "condition", metCondition: 0 });
+  });
+
+  it("manages watches, the explanation level, the heatmap and the pointed-at part", () => {
+    const store = createSimStore();
+    const a = store.getState();
+    a.addWatch({ kind: "mailbox", address: 6 });
+    a.addWatch({ kind: "mailbox", address: 6 });
+    expect(store.getState().watches).toHaveLength(3);
+    a.removeWatch(0);
+    expect(store.getState().watches[0]).toEqual({ kind: "pc" });
+    a.setLevel("technical");
+    a.toggleHeatmap();
+    a.setHoverTerm("ACC");
+    a.setHoverTerm("ACC");
+    a.setView("flow");
+    expect(store.getState()).toMatchObject({
+      level: "technical",
+      heatmap: true,
+      hoverTerm: "ACC",
+      view: "flow",
+    });
+  });
 });

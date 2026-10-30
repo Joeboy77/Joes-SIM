@@ -1,6 +1,6 @@
 "use client";
 
-import { DIALECTS, formatValue } from "@joes-sim/engine";
+import { DIALECTS, describeCondition, formatValue } from "@joes-sim/engine";
 import { useSimState } from "../SimProvider";
 
 /** One plain sentence about where the machine is. Announced to screen readers. */
@@ -10,6 +10,9 @@ export function StatusLine() {
   const loop = useSimState((s) => s.loop);
   const dialect = useSimState((s) => s.dialect);
   const busy = useSimState((s) => s.busy);
+  const condition = useSimState((s) =>
+    s.metCondition === null ? null : (s.conditions[s.metCondition] ?? null),
+  );
   const errors = useSimState(
     (s) => s.assembled.diagnostics.filter((d) => d.severity === "error").length,
   );
@@ -22,7 +25,7 @@ export function StatusLine() {
   } else if (busy) {
     text = "Running…";
   } else if (reason === "infinite-loop" && loop) {
-    text = `This program can never stop: from step ${loop.startCycle} it repeats the same ${loop.length} instruction${loop.length === 1 ? "" : "s"} forever, starting at mailbox ${String(loop.startAddress).padStart(2, "0")}.`;
+    text = `This program can never stop: from step ${loop.startCycle + 1} it repeats the same ${loop.length} instruction${loop.length === 1 ? "" : "s"} forever, starting at mailbox ${String(loop.startAddress).padStart(2, "0")}.`;
     tone = "text-danger";
   } else if (state.status === "halted") {
     text = `Finished after ${state.cycles} instruction${state.cycles === 1 ? "" : "s"}.`;
@@ -32,6 +35,8 @@ export function StatusLine() {
     tone = "text-danger";
   } else if (state.status === "waiting-input") {
     text = "Waiting for an input. Type a value in the Inputs panel.";
+  } else if (reason === "condition" && condition) {
+    text = `Stopped after step ${state.cycles}, because ${describeCondition(condition)}.`;
   } else if (reason === "breakpoint") {
     text = `Paused at the breakpoint on mailbox ${String(state.pc).padStart(2, "0")}.`;
   } else if (reason === "budget") {

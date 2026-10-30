@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 // Runs the engine off the main thread, so instant runs and look-ahead never freeze the page.
-import { run, type MachineState, type RunOptions } from "@joes-sim/engine";
+import { run, type MachineState, type RunCondition, type RunOptions } from "@joes-sim/engine";
 
 export interface RunRequest {
   readonly id: number;
@@ -9,6 +9,7 @@ export interface RunRequest {
     readonly maxSteps?: number;
     readonly breakpoints?: number[];
     readonly detectLoops?: boolean;
+    readonly conditions?: readonly RunCondition[];
   };
 }
 

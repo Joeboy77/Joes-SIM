@@ -33,11 +33,14 @@ export function usePlayback() {
     const from = s.state;
     if (s.speed === "instant") {
       s.setBusy(true);
-      void runOffThread(from, { breakpoints: s.breakpoints }).then((r) => {
-        // Ignore the result if the program changed while it ran.
-        if (store.getState().state === from) store.getState().applyRun(r.state, r.reason, r.loop);
-        else store.getState().setBusy(false);
-      });
+      void runOffThread(from, { breakpoints: s.breakpoints, conditions: s.conditions }).then(
+        (r) => {
+          // Ignore the result if the program changed while it ran.
+          if (store.getState().state === from)
+            store.getState().applyRun(r.state, r.reason, r.loop, r.condition);
+          else store.getState().setBusy(false);
+        },
+      );
       return;
     }
     s.play();

@@ -65,6 +65,9 @@ importers:
       '@joes-sim/engine':
         specifier: workspace:*
         version: link:../../packages/engine
+      '@joes-sim/narration':
+        specifier: workspace:*
+        version: link:../../packages/narration
       '@joes-sim/ui':
         specifier: workspace:*
         version: link:../../packages/ui
