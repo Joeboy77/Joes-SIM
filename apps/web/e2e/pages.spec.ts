@@ -5,6 +5,11 @@ const PAGES = [
   { path: "/", heading: /See what a computer is doing/ },
   { path: "/sim", heading: "Simulator" },
   { path: "/embed", heading: "Joe's SIM" },
+  { path: "/learn", heading: "Learn" },
+  { path: "/learn/arrays", heading: "Arrays and self-modifying code" },
+  { path: "/challenges", heading: "Challenges" },
+  { path: "/challenges/max-of-two", heading: "The bigger one" },
+  { path: "/progress", heading: "Your progress" },
 ];
 const THEMES = ["light", "dark", "high-contrast"] as const;
 
