@@ -86,11 +86,12 @@ function Layout() {
 
   return (
     <div className="flex h-dvh flex-col">
-      <header className="flex items-center justify-between gap-3 border-b border-border bg-surface px-3 py-2">
-        <div className="flex min-w-0 items-center gap-3">
-          <Link href="/" className="font-bold">
-            Joe&apos;s SIM
-          </Link>
+      {/* On phones the file sits on its own row, so its name has room. */}
+      <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-border bg-surface px-3 py-2">
+        <Link href="/" className="font-bold whitespace-nowrap">
+          Joe&apos;s SIM
+        </Link>
+        <div className="order-last flex w-full min-w-0 sm:order-none sm:w-auto sm:grow">
           <FilesMenu />
         </div>
         <h1 className="sr-only">Simulator</h1>

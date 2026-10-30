@@ -41,7 +41,7 @@ export function FilesMenu() {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="min-h-11 max-w-[12rem] truncate rounded-md border border-border-strong bg-surface px-3 text-sm font-bold"
+          className="min-h-11 max-w-[16rem] truncate rounded-md border border-border-strong bg-surface px-3 text-sm font-bold"
         >
           <span aria-hidden="true">📄 </span>
           {title}

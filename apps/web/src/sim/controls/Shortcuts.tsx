@@ -78,7 +78,7 @@ export function Shortcuts() {
         type="button"
         onClick={() => setOpen(true)}
         aria-keyshortcuts="?"
-        className="min-h-11 rounded-md border border-border-strong bg-surface px-3 text-sm font-bold"
+        className="min-h-11 rounded-md border border-border-strong bg-surface px-3 text-sm font-bold whitespace-nowrap"
       >
         Keys <span aria-hidden="true">?</span>
       </button>
