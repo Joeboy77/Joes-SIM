@@ -2,8 +2,6 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 
-const status = (page: Page) => page.getByRole("status").first();
-
 async function typeProgram(page: Page, source: string) {
   const content = page.locator(".cm-content").first();
   await content.click();
@@ -33,9 +31,17 @@ async function savedFile(page: Page, text: string) {
     .toBe(true);
 }
 
+/** Waits for fades and slides to finish, so contrast is checked on the final colours. */
+async function settled(page: Page) {
+  await page.waitForFunction(() =>
+    document.getAnimations().every((a) => a.playState !== "running"),
+  );
+}
+
 async function openFiles(page: Page) {
-  await page.getByRole("button", { name: /manage files/ }).click();
-  return page.getByRole("dialog", { name: "Your files" });
+  const dialog = page.getByRole("dialog", { name: "Your files" });
+  if (!(await dialog.isVisible())) await page.getByRole("button", { name: /manage files/ }).click();
+  return dialog;
 }
 
 const SUM =
@@ -61,7 +67,7 @@ test("files can be created, renamed, duplicated, deleted, exported and imported"
   await page.goto("/sim");
   let files = await openFiles(page);
   await files.getByRole("button", { name: "New file" }).click();
-  await expect(page.getByRole("button", { name: /Untitled: manage files/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Untitled\s*: manage files/ })).toBeVisible();
   await typeProgram(page, "        INP\n        HLT\n// reader");
   await savedFile(page, "// reader");
 
@@ -71,7 +77,9 @@ test("files can be created, renamed, duplicated, deleted, exported and imported"
   await files.getByRole("button", { name: "Save name" }).click();
   await expect(files.getByRole("button", { name: /^Reader/ })).toBeVisible();
   await files.getByRole("button", { name: "Duplicate Reader" }).click();
-  await expect(page.getByRole("button", { name: /Reader \(copy\): manage files/ })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /Reader \(copy\)\s*: manage files/ }),
+  ).toBeVisible();
 
   files = await openFiles(page);
   page.once("dialog", (d) => void d.accept());
@@ -89,7 +97,7 @@ test("files can be created, renamed, duplicated, deleted, exported and imported"
     mimeType: "text/plain",
     buffer: Buffer.from("// dialect: ocr\n        INP\nloop    OUT\n        HLT\n"),
   });
-  await expect(page.getByRole("button", { name: /countdown: manage files/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /countdown\s*: manage files/ })).toBeVisible();
   await expect(page.getByText("Dialect: OCR").or(page.getByText(/Dialect:\s*OCR/))).toBeVisible();
 });
 
@@ -123,7 +131,12 @@ test("a failing test opens in the simulator where the output first differs", asy
 test("the model solution opens only after a genuine attempt", async ({ page }) => {
   await page.goto("/challenges/double");
   await expect(page.getByText(/The model solution opens once/)).toBeVisible();
-  for (const extra of ["OUT", "OUT\n        OUT", "OUT\n        OUT\n        OUT"]) {
+  // Three versions that differ from the starter (which is INP, OUT, HLT).
+  for (const extra of [
+    "OUT\n        OUT",
+    "OUT\n        OUT\n        OUT",
+    "STA 50\n        OUT",
+  ]) {
     await typeProgram(page, `        INP\n        ${extra}\n        HLT`);
     await page.getByRole("button", { name: "Run the tests" }).click();
     await expect(page.getByText(/tests pass/)).toBeVisible();
@@ -149,8 +162,11 @@ test("predict mode asks before each step and keeps score", async ({ page }) => {
   await page.getByLabel("Your prediction").fill("9");
   await page.getByRole("button", { name: "Check and step" }).click();
   await expect(page.getByText("✗ Not quite: the answer was 3.")).toBeVisible();
-  await page.goto("/progress");
-  await expect(page.getByText("Overall: 50% (1 of 2)")).toBeVisible();
+  // The last answer is saved a moment later; check until it is there.
+  await expect(async () => {
+    await page.goto("/progress");
+    await expect(page.getByText("Overall: 50% (1 of 2)")).toBeVisible({ timeout: 1000 });
+  }).toPass();
 });
 
 test("a lesson drives its simulators, asks questions and is marked finished", async ({ page }) => {
@@ -158,10 +174,8 @@ test("a lesson drives its simulators, asks questions and is marked finished", as
   await page.getByRole("button", { name: "b", exact: true }).click();
   await expect(page.getByText(/✓ Yes\./)).toBeVisible();
   const sim = page.getByRole("region", { name: "The bigger one" });
-  await sim
-    .getByRole("button", { name: "Speed, dialect and view" })
-    .click()
-    .catch(() => undefined);
+  const gear = sim.getByRole("button", { name: "Speed, dialect and view" });
+  if (await gear.isVisible()) await gear.click();
   await sim.getByLabel("Speed").selectOption("instant");
   await sim.getByRole("button", { name: "Run", exact: true }).click();
   await expect(sim.getByRole("img", { name: /Flow graph/ })).toBeVisible();
@@ -270,6 +284,7 @@ test("the challenge and lesson pages have no accessibility violations after use"
   await page.getByRole("button", { name: "Run the tests" }).click();
   await expect(page.getByText(/All 3 tests pass/)).toBeVisible();
   await page.getByRole("button", { name: "Show a hint" }).click();
+  await settled(page);
   expect(await scan()).toEqual([]);
   await page.goto("/learn/keeping-numbers");
   await page.getByRole("button", { name: "The same number as before" }).click();
