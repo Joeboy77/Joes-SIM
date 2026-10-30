@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Atkinson_Hyperlegible, JetBrains_Mono } from "next/font/google";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "@/styles/globals.css";
+import { OfflineSupport } from "@/components/OfflineSupport";
 
 // Atkinson Hyperlegible is designed for low-vision readers; JetBrains Mono keeps 0/O and 1/l apart.
 const sans = Atkinson_Hyperlegible({
@@ -36,7 +37,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
-      <body className="min-h-dvh bg-bg text-text antialiased">{children}</body>
+      <body className="min-h-dvh bg-bg text-text antialiased">
+        {children}
+        <OfflineSupport />
+      </body>
     </html>
   );
 }
