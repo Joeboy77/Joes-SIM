@@ -9,6 +9,7 @@ export * from "./core";
 export * from "./dialects";
 export * from "./assembler";
 export * from "./analysis";
+export * from "./insight";
 export * from "./machines";
 export * from "./reference";
 
