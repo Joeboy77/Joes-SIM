@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePlayback } from "../usePlayback";
+import { VIEW_ORDER } from "../store";
 import { useSim } from "../SimProvider";
 
 export const SHORTCUTS: readonly [string, string][] = [
@@ -11,7 +12,7 @@ export const SHORTCUTS: readonly [string, string][] = [
   ["M", "Step one micro-step"],
   ["Shift+M", "Step back one micro-step"],
   ["R", "Reset"],
-  ["V", "Switch between datapath and story view"],
+  ["V", "Switch view: datapath, story, flow graph"],
   ["F", "Presentation mode (bigger everything)"],
   ["?", "Show this help"],
 ];
@@ -49,7 +50,8 @@ export function Shortcuts() {
         m: () => !busy && a.stepMicro(),
         M: () => !busy && a.back(),
         r: () => a.reset(),
-        v: () => a.setView(a.view === "datapath" ? "story" : "datapath"),
+        v: () =>
+          a.setView(VIEW_ORDER[(VIEW_ORDER.indexOf(a.view) + 1) % VIEW_ORDER.length] ?? "datapath"),
         f: () => a.togglePresentation(),
         "?": () => setOpen(true),
       };

@@ -3,6 +3,7 @@
 import { useSimState } from "../SimProvider";
 import { useActivity } from "../useActivity";
 import { DatapathView } from "../views/DatapathView";
+import { FlowView } from "../views/FlowView";
 import { MemoryGrid } from "../views/MemoryGrid";
 import { StoryView } from "../views/StoryView";
 
@@ -14,7 +15,7 @@ export function MachinePanel() {
   return (
     <div className="space-y-3">
       <div className="overflow-hidden rounded-md border border-border bg-surface">
-        {view === "datapath" ? <DatapathView /> : <StoryView />}
+        {view === "datapath" ? <DatapathView /> : view === "story" ? <StoryView /> : <FlowView />}
       </div>
       {b && (
         <p className="rounded-sm border border-branch px-3 py-1.5 text-sm" role="note">

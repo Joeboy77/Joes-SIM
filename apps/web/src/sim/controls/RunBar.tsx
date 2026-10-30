@@ -5,6 +5,13 @@ import { useId, useState } from "react";
 import { usePlayback } from "../usePlayback";
 import { useSim, useSimState } from "../SimProvider";
 import { SPEEDS, SPEED_ORDER, type Speed } from "../speeds";
+import { VIEW_ORDER, type ViewMode } from "../store";
+
+export const VIEW_LABELS: Record<ViewMode, string> = {
+  datapath: "Datapath",
+  story: "Story",
+  flow: "Flow graph",
+};
 
 function Button({
   label,
@@ -53,6 +60,7 @@ export function RunBar() {
   const view = useSimState((s) => s.view);
   const speedId = useId();
   const dialectId = useId();
+  const viewId = useId();
   const timelineId = useId();
   const [settings, setSettings] = useState(false);
 
@@ -183,13 +191,24 @@ export function RunBar() {
           </select>
         </div>
 
-        <Button
-          label={view === "datapath" ? "Switch to story view" : "Switch to datapath view"}
-          shortcut="V"
-          onClick={() => a.setView(view === "datapath" ? "story" : "datapath")}
-        >
-          {view === "datapath" ? "Story view" : "Datapath view"}
-        </Button>
+        <div className="flex items-center gap-1">
+          <label htmlFor={viewId} className="text-sm text-muted">
+            View
+          </label>
+          <select
+            id={viewId}
+            value={view}
+            aria-keyshortcuts="V"
+            onChange={(e) => a.setView(e.target.value as ViewMode)}
+            className="min-h-11 rounded-sm border border-border-strong bg-surface px-2 text-sm text-text"
+          >
+            {VIEW_ORDER.map((v) => (
+              <option key={v} value={v}>
+                {VIEW_LABELS[v]}
+              </option>
+            ))}
+          </select>
+        </div>
         <Button label="Presentation mode" shortcut="F" onClick={() => a.togglePresentation()}>
           <span aria-hidden="true">⛶</span>
         </Button>
