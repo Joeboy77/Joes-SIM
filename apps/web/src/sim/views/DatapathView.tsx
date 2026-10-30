@@ -72,6 +72,7 @@ const toPath = (points: { x: number; y: number }[]) =>
 export function DatapathView() {
   const state = useSimState((s) => s.state);
   const { activity, stepId, duration, reduced } = useActivity();
+  const hover = useSimState((s) => s.hoverTerm);
   if (!state) return <EmptyMachine />;
 
   const decodedOp = Math.floor(state.ir / 100);
@@ -126,6 +127,7 @@ export function DatapathView() {
       {(Object.keys(BOXES) as Component[]).map((c) => {
         const b = BOXES[c];
         const on = activity.active.has(c);
+        const pointed = hover === c;
         return (
           <g key={c}>
             <rect
@@ -135,8 +137,15 @@ export function DatapathView() {
               height={b.h}
               rx={10}
               fill="var(--sim-color-surface)"
-              stroke={on ? "var(--sim-color-accent)" : "var(--sim-color-border-strong)"}
-              strokeWidth={on ? 4 : 2}
+              stroke={
+                pointed
+                  ? "var(--sim-color-branch)"
+                  : on
+                    ? "var(--sim-color-accent)"
+                    : "var(--sim-color-border-strong)"
+              }
+              strokeWidth={on || pointed ? 4 : 2}
+              strokeDasharray={pointed ? "8 4" : undefined}
             />
             <text
               x={b.x + 10}
