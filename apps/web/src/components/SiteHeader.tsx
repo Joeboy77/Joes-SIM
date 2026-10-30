@@ -8,10 +8,19 @@ export function SiteHeader() {
         <Link href="/" className="text-lg font-bold">
           Joe&apos;s SIM
         </Link>
-        <nav aria-label="Main" className="flex items-center gap-4">
-          <Link href="/sim" className="text-accent underline-offset-4 hover:underline">
-            Simulator
-          </Link>
+        <nav aria-label="Main" className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          {(
+            [
+              ["/sim", "Simulator"],
+              ["/learn", "Learn"],
+              ["/challenges", "Challenges"],
+              ["/progress", "Progress"],
+            ] as const
+          ).map(([href, label]) => (
+            <Link key={href} href={href} className="text-accent underline-offset-4 hover:underline">
+              {label}
+            </Link>
+          ))}
           <ThemeSwitcher />
         </nav>
       </div>
