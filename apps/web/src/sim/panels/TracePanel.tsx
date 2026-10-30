@@ -109,6 +109,7 @@ function same(answer: string, expected: string) {
 /** The automatic trace table (brief, 7.3). */
 export function TracePanel() {
   const store = useSim();
+  const traceId = useId();
   const { trace: live } = useTrace();
   const state = useSimState((s) => s.state);
   const initial = useSimState((s) => s.initial);
@@ -191,9 +192,9 @@ export function TracePanel() {
   };
 
   return (
-    <section aria-labelledby="trace-h" className="space-y-3">
+    <section aria-labelledby={traceId} className="space-y-3">
       <div className="no-print space-y-2">
-        <h2 id="trace-h" className="text-sm font-bold">
+        <h2 id={traceId} className="text-sm font-bold">
           Trace table
         </h2>
         <fieldset className="flex flex-wrap gap-x-3 gap-y-1 text-sm">

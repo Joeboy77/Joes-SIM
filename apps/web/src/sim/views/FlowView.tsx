@@ -2,7 +2,7 @@
 
 import { buildCfg, disassembleWord, type CfgEdge } from "@joes-sim/engine";
 import { motion } from "motion/react";
-import { useMemo } from "react";
+import { useId, useMemo } from "react";
 import { useSimState } from "../SimProvider";
 import { useActivity } from "../useActivity";
 import { useTrace } from "../useTrace";
@@ -42,6 +42,7 @@ export function FlowView() {
   const { trace } = useTrace();
   const { duration } = useActivity();
   const stepId = useSimState((s) => s.stepId);
+  const uid = useId().replace(/:/g, "");
 
   const graph = useMemo(() => {
     if (!program) return null;
@@ -115,7 +116,7 @@ export function FlowView() {
       >
         <defs>
           <marker
-            id="flow-head"
+            id={`flow-head-${uid}`}
             viewBox="0 0 10 10"
             refX={9}
             refY={5}
@@ -126,7 +127,7 @@ export function FlowView() {
             <path d="M0 0 L10 5 L0 10 Z" fill="var(--sim-color-border-strong)" />
           </marker>
           <marker
-            id="flow-head-on"
+            id={`flow-head-on-${uid}`}
             viewBox="0 0 10 10"
             refX={9}
             refY={5}
@@ -179,7 +180,7 @@ export function FlowView() {
                 stroke={used ? "var(--sim-color-accent)" : "var(--sim-color-border-strong)"}
                 strokeWidth={used ? 3 : 1.5}
                 strokeDasharray={used ? undefined : "5 4"}
-                markerEnd={used ? "url(#flow-head-on)" : "url(#flow-head)"}
+                markerEnd={used ? `url(#flow-head-on-${uid})` : `url(#flow-head-${uid})`}
               />
               {fresh && (
                 <motion.path

@@ -112,6 +112,8 @@ function TargetPicker({
 /** Watches, number views (brief, 7.11) and run-until conditions. */
 export function WatchPanel() {
   const store = useSim();
+  const watchId = useId();
+  const untilId = useId();
   const state = useSimState((s) => s.state);
   const program = useSimState((s) => s.assembled.program);
   const dialect = useSimState((s) => s.dialect);
@@ -174,8 +176,8 @@ export function WatchPanel() {
 
   return (
     <div className="space-y-6">
-      <section aria-labelledby="watch-h" className="space-y-2">
-        <h2 id="watch-h" className="text-sm font-bold">
+      <section aria-labelledby={watchId} className="space-y-2">
+        <h2 id={watchId} className="text-sm font-bold">
           Watches
         </h2>
         <div className="overflow-x-auto">
@@ -269,8 +271,8 @@ export function WatchPanel() {
         </div>
       </section>
 
-      <section aria-labelledby="until-h" className="space-y-2">
-        <h2 id="until-h" className="text-sm font-bold">
+      <section aria-labelledby={untilId} className="space-y-2">
+        <h2 id={untilId} className="text-sm font-bold">
           Run until
         </h2>
         <p className="text-sm text-muted">

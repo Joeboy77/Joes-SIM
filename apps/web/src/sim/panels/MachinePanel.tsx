@@ -7,7 +7,7 @@ import { FlowView } from "../views/FlowView";
 import { MemoryGrid } from "../views/MemoryGrid";
 import { StoryView } from "../views/StoryView";
 
-export function MachinePanel() {
+export function MachinePanel({ memory = true }: { memory?: boolean }) {
   const view = useSimState((s) => s.view);
   const { activity } = useActivity();
   const b = activity.branch;
@@ -24,7 +24,7 @@ export function MachinePanel() {
           {b.taken ? "✓ taken, jumping there" : "✗ not taken, carrying on to the next mailbox"}
         </p>
       )}
-      <MemoryGrid />
+      {memory && <MemoryGrid />}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useSim, useSimState } from "../SimProvider";
 import { useRuntimeFindings } from "../useRuntimeFindings";
 
@@ -17,8 +17,17 @@ const ICON = { error: "✖", warning: "⚠", info: "ℹ" } as const;
 const TIER = ["Nudge", "Pointer", "Exact cause"] as const;
 
 /** Hints in three tiers: the learner chooses when to see more (brief, 7.6). */
-function Hints({ hints }: { hints: readonly [string, string, string] }) {
-  const [shown, setShown] = useState(0);
+export function Hints({
+  hints,
+  initial = 0,
+  onReveal,
+}: {
+  hints: readonly [string, string, string];
+  /** Hints already seen, for example in an earlier visit. */
+  initial?: number;
+  onReveal?: (shown: number) => void;
+}) {
+  const [shown, setShown] = useState(initial);
   return (
     <div className="mt-1 space-y-1">
       {hints.slice(0, shown).map((h, i) => (
@@ -29,7 +38,10 @@ function Hints({ hints }: { hints: readonly [string, string, string] }) {
       {shown < 3 && (
         <button
           type="button"
-          onClick={() => setShown(shown + 1)}
+          onClick={() => {
+            setShown(shown + 1);
+            onReveal?.(shown + 1);
+          }}
           className="min-h-11 rounded-sm border border-border-strong bg-surface px-3 text-sm"
         >
           {shown === 0 ? "Show a hint" : "Show more"}
@@ -41,6 +53,7 @@ function Hints({ hints }: { hints: readonly [string, string, string] }) {
 
 export function ProblemsPanel() {
   const store = useSim();
+  const problemsId = useId();
   const diagnostics = useSimState((s) => s.assembled.diagnostics);
   const findings = useSimState((s) => s.findings);
   const runtime = useRuntimeFindings();
@@ -70,8 +83,8 @@ export function ProblemsPanel() {
   ];
 
   return (
-    <section aria-labelledby="problems-h">
-      <h2 id="problems-h" className="mb-1 text-sm font-bold">
+    <section aria-labelledby={problemsId}>
+      <h2 id={problemsId} className="mb-1 text-sm font-bold">
         Problems and hints {items.length ? `(${items.length})` : ""}
       </h2>
       {items.length === 0 ? (

@@ -2,6 +2,7 @@
 
 import { formatValue, type Component, type MachineState } from "@joes-sim/engine";
 import { motion } from "motion/react";
+import { useId } from "react";
 import { useSimState } from "../SimProvider";
 import { useActivity } from "../useActivity";
 import { EmptyMachine } from "./DatapathView";
@@ -332,6 +333,7 @@ export function StoryView() {
 
 /** A curved arrow across the mailbox wall from a branch to its target: solid if taken, dashed if not. */
 function BranchArrow({ from, target, taken }: { from: number; target: number; taken: boolean }) {
+  const id = `branch-head-${useId().replace(/:/g, "")}`;
   const a = mailboxPos(from);
   const b = mailboxPos(target);
   const colour = "var(--sim-color-branch)";
@@ -353,7 +355,7 @@ function BranchArrow({ from, target, taken }: { from: number; target: number; ta
     <g aria-hidden="true" pointerEvents="none">
       <defs>
         <marker
-          id="branch-head"
+          id={id}
           viewBox="0 0 10 10"
           refX={8}
           refY={5}
@@ -370,7 +372,7 @@ function BranchArrow({ from, target, taken }: { from: number; target: number; ta
         stroke={colour}
         strokeWidth={3}
         strokeDasharray={taken ? undefined : "6 5"}
-        markerEnd="url(#branch-head)"
+        markerEnd={`url(#${id})`}
       />
     </g>
   );

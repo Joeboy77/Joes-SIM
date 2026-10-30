@@ -1,7 +1,7 @@
 "use client";
 
 import { narrate, type Level, type Segment } from "@joes-sim/narration";
-import { useMemo } from "react";
+import { useId, useMemo } from "react";
 import { useSim, useSimState } from "../SimProvider";
 import { useActivity } from "../useActivity";
 
@@ -13,6 +13,7 @@ const LEVELS: { id: Level; label: string }[] = [
 /** Plain-language narration of the last action (brief, 7.1). */
 export function ExplainPanel() {
   const store = useSim();
+  const explainId = useId();
   const state = useSimState((s) => s.state);
   const lastSteps = useSimState((s) => s.lastSteps);
   const direction = useSimState((s) => s.direction);
@@ -37,9 +38,9 @@ export function ExplainPanel() {
   const plain = sentences.map((s) => s.map((x) => x.text).join("")).join(" ");
 
   return (
-    <section aria-labelledby="explain-h" className="space-y-2">
+    <section aria-labelledby={explainId} className="space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id="explain-h" className="text-sm font-bold">
+        <h2 id={explainId} className="text-sm font-bold">
           What just happened
         </h2>
         <div role="group" aria-label="Explanation level" className="flex gap-1">
