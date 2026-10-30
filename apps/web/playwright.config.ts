@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const PORT = 3100;
+// An unusual port, so a dev server from another project is never reused by mistake.
+const PORT = Number(process.env.E2E_PORT ?? 4317);
 
 export default defineConfig({
   testDir: "./e2e",
