@@ -250,5 +250,17 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     },
   };
 
-  return <Ctx.Provider value={api}>{children}</Ctx.Provider>;
+  // Show the simulator once the learner's work has loaded, so nothing they do is overwritten by
+  // the load. IndexedDB answers in a few milliseconds.
+  return (
+    <Ctx.Provider value={api}>
+      {status === "loading" ? (
+        <p className="p-6 text-muted" role="status">
+          Opening your work…
+        </p>
+      ) : (
+        children
+      )}
+    </Ctx.Provider>
+  );
 }
