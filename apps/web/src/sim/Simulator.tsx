@@ -6,19 +6,34 @@ import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { RunBar } from "./controls/RunBar";
 import { Shortcuts } from "./controls/Shortcuts";
 import { Editor } from "./editor/Editor";
+import { ExplainPanel } from "./panels/ExplainPanel";
 import { IOPanel } from "./panels/IOPanel";
 import { MachinePanel } from "./panels/MachinePanel";
 import { ProblemsPanel } from "./panels/ProblemsPanel";
 import { StatusLine } from "./panels/StatusLine";
+import { TracePanel } from "./panels/TracePanel";
+import { WatchPanel } from "./panels/WatchPanel";
 import { SimProvider, useSimState } from "./SimProvider";
 import { usePlaybackLoop } from "./usePlayback";
 
+// On phones every part is a tab. On larger screens the inputs and output stay in view and the
+// other side panels share tabs.
 const TABS = [
   { id: "code", label: "Code" },
   { id: "machine", label: "Machine" },
+  { id: "explain", label: "Explain" },
+  { id: "trace", label: "Trace" },
+  { id: "watch", label: "Watch" },
   { id: "io", label: "Inputs & output" },
 ] as const;
 type Tab = (typeof TABS)[number]["id"];
+const SIDE_TABS = [
+  { id: "explain", label: "Explain" },
+  { id: "trace", label: "Trace" },
+  { id: "watch", label: "Watch" },
+] as const;
+type SideTab = (typeof SIDE_TABS)[number]["id"];
+const SIDE = new Set<Tab>(["explain", "trace", "watch", "io"]);
 
 function Panel({
   title,
@@ -40,6 +55,10 @@ function Layout() {
   usePlaybackLoop();
   const presentation = useSimState((s) => s.presentation);
   const [tab, setTab] = useState<Tab>("code");
+  const [side, setSide] = useState<SideTab>("explain");
+  /** Shown on phones when its tab is chosen, and on larger screens when its side tab is. */
+  const sideClass = (id: SideTab) =>
+    `${tab === id ? "block" : "hidden"} ${side === id ? "lg:block" : "lg:hidden"}`;
   const touchStart = useRef<number | null>(null);
 
   // Presentation mode enlarges everything, including rem-based sizes.
@@ -91,7 +110,7 @@ function Layout() {
             type="button"
             aria-pressed={tab === t.id}
             onClick={() => setTab(t.id)}
-            className={`min-h-11 flex-1 text-sm font-bold ${tab === t.id ? "border-b-4 border-accent text-text" : "text-muted"}`}
+            className={`min-h-11 flex-1 px-0.5 text-xs leading-tight font-bold sm:text-sm ${tab === t.id ? "border-b-4 border-accent text-text" : "text-muted"}`}
           >
             {t.label}
           </button>
@@ -114,11 +133,39 @@ function Layout() {
           <MachinePanel />
         </Panel>
         <Panel
-          title="Inputs, output and problems"
-          className={`space-y-6 ${tab === "io" ? "" : "hidden"} lg:block`}
+          title="Inputs, output and explanations"
+          className={`space-y-4 ${SIDE.has(tab) ? "" : "hidden"} lg:block`}
         >
-          <IOPanel />
-          <ProblemsPanel />
+          <div className={`${tab === "io" ? "block" : "hidden"} lg:block`}>
+            <IOPanel />
+          </div>
+          <div
+            role="group"
+            aria-label="Side panels"
+            className="hidden gap-1 border-b border-border lg:flex"
+          >
+            {SIDE_TABS.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                aria-pressed={side === t.id}
+                onClick={() => setSide(t.id)}
+                className={`min-h-11 flex-1 text-sm font-bold ${side === t.id ? "border-b-4 border-accent text-text" : "text-muted"}`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+          <div className={`space-y-6 ${sideClass("explain")}`}>
+            <ExplainPanel />
+            <ProblemsPanel />
+          </div>
+          <div className={sideClass("trace")}>
+            <TracePanel />
+          </div>
+          <div className={sideClass("watch")}>
+            <WatchPanel />
+          </div>
         </Panel>
       </main>
     </div>
