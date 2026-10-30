@@ -45,3 +45,22 @@ body {
   outline: 3px solid var(--sim-color-focus);
   outline-offset: 2px;
 }
+
+/* Printing a trace table prints only the table. */
+@media print {
+  body.printing-trace * {
+    visibility: hidden;
+  }
+  body.printing-trace .print-area,
+  body.printing-trace .print-area * {
+    visibility: visible;
+  }
+  body.printing-trace .print-area {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+  }
+  body.printing-trace .no-print {
+    display: none;
+  }
+}
