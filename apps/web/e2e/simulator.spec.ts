@@ -234,6 +234,9 @@ test("the heatmap and number card show how each mailbox was used", async ({ page
   const first = page.getByRole("button", { name: /^Mailbox 06/ });
   await expect(first).toHaveAccessibleName(/used as data/);
   await expect(first).toHaveAccessibleName(/read 1, written 1 times/);
+  // Scrolling can pass the pointer over other mailboxes, and the card follows the pointer.
+  await first.scrollIntoViewIfNeeded();
+  await page.mouse.move(0, 0);
   await first.focus();
   await expect(page.getByText(/Two's complement \(10-bit\) 00 0000 0011/)).toBeVisible();
 });
