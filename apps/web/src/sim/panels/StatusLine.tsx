@@ -2,6 +2,7 @@
 
 import { DIALECTS, describeCondition, formatValue } from "@joes-sim/engine";
 import { useSimState } from "../SimProvider";
+import { useWorkspaceLoading } from "../workspace/Workspace";
 
 /** One plain sentence about where the machine is. Announced to screen readers. */
 export function StatusLine() {
@@ -10,6 +11,7 @@ export function StatusLine() {
   const loop = useSimState((s) => s.loop);
   const dialect = useSimState((s) => s.dialect);
   const busy = useSimState((s) => s.busy);
+  const loading = useWorkspaceLoading();
   const condition = useSimState((s) =>
     s.metCondition === null ? null : (s.conditions[s.metCondition] ?? null),
   );
@@ -19,7 +21,9 @@ export function StatusLine() {
 
   let text: string;
   let tone = "text-text";
-  if (!state) {
+  if (loading) {
+    text = "Opening your work…";
+  } else if (!state) {
     text = `The program has ${errors} error${errors === 1 ? "" : "s"} to fix before it can run.`;
     tone = "text-danger";
   } else if (busy) {
