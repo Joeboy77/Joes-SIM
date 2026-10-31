@@ -92,46 +92,54 @@ export default function ReferencePage() {
         </p>
       </div>
 
-      <table className="w-full border-collapse text-sm">
-        <caption className="mb-2 text-start text-lg font-bold">Instructions</caption>
-        <thead>
-          <tr className="text-start">
-            <th scope="col" className="border-b-2 border-border-strong p-2">
-              Code
-            </th>
-            <th scope="col" className="border-b-2 border-border-strong p-2">
-              Mnemonic
-            </th>
-            <th scope="col" className="border-b-2 border-border-strong p-2">
-              What it does
-            </th>
-            <th scope="col" className="border-b-2 border-border-strong p-2">
-              Negative flag
-            </th>
-            <th scope="col" className="border-b-2 border-border-strong p-2">
-              Dialects
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {INSTRUCTIONS.map(({ m, operand, does, flag }) => (
-            <tr key={m}>
-              <td className="border-b border-border p-2 font-mono">{code(m, operand)}</td>
-              <th scope="row" className="border-b border-border p-2 text-start font-mono">
-                {m}
-                {operand ? " xx" : ""}
+      {/* A wide table scrolls inside its own box on narrow screens, never the whole page. */}
+      <div
+        className="overflow-x-auto"
+        role="region"
+        aria-label="Instructions, scrollable"
+        tabIndex={0}
+      >
+        <table className="w-full min-w-[40rem] border-collapse text-sm">
+          <caption className="mb-2 text-start text-lg font-bold">Instructions</caption>
+          <thead>
+            <tr className="text-start">
+              <th scope="col" className="border-b-2 border-border-strong p-2">
+                Code
               </th>
-              <td className="border-b border-border p-2">{does}</td>
-              <td className="border-b border-border p-2">{flag}</td>
-              <td className="border-b border-border p-2">
-                {DIALECT_IDS.filter((d) => Object.values(DIALECTS[d].spellings).includes(m))
-                  .map((d) => DIALECTS[d].name)
-                  .join(", ")}
-              </td>
+              <th scope="col" className="border-b-2 border-border-strong p-2">
+                Mnemonic
+              </th>
+              <th scope="col" className="border-b-2 border-border-strong p-2">
+                What it does
+              </th>
+              <th scope="col" className="border-b-2 border-border-strong p-2">
+                Negative flag
+              </th>
+              <th scope="col" className="border-b-2 border-border-strong p-2">
+                Dialects
+              </th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {INSTRUCTIONS.map(({ m, operand, does, flag }) => (
+              <tr key={m}>
+                <td className="border-b border-border p-2 font-mono">{code(m, operand)}</td>
+                <th scope="row" className="border-b border-border p-2 text-start font-mono">
+                  {m}
+                  {operand ? " xx" : ""}
+                </th>
+                <td className="border-b border-border p-2">{does}</td>
+                <td className="border-b border-border p-2">{flag}</td>
+                <td className="border-b border-border p-2">
+                  {DIALECT_IDS.filter((d) => Object.values(DIALECTS[d].spellings).includes(m))
+                    .map((d) => DIALECTS[d].name)
+                    .join(", ")}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       <section aria-labelledby="dialects-h" className="space-y-4">
         <h2 id="dialects-h" className="text-2xl font-bold">
