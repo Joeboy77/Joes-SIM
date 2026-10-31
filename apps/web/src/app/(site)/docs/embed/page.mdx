@@ -1,0 +1,70 @@
+export const metadata = {
+  title: "Embedding the simulator",
+  description:
+    "Put a live Little Man Computer simulator in Moodle, Sakai, Canvas, slides or a blog, with your own program, inputs, dialect and view.",
+};
+
+# Embedding the simulator
+
+You can put a live simulator in any web page: a course page in Moodle, Sakai or Canvas, a blog
+post, or slides. Learners use it right there, and **Open in Joe's SIM** moves the program into
+the full app.
+
+## In a learning platform: use an iframe
+
+Most course platforms allow iframes but remove scripts, so use this. In the page editor, switch
+to the **HTML** or **source code** view and paste:
+
+```html
+<iframe
+  title="Little Man Computer simulator"
+  src="https://YOUR-JOES-SIM-ADDRESS/embed?program=%20%20%20%20%20%20%20%20INP%0A%20%20%20%20%20%20%20%20OUT%0A%20%20%20%20%20%20%20%20HLT&inputs=5"
+  width="100%"
+  height="640"
+  style="border:1px solid #c9ced6;border-radius:8px"
+></iframe>
+```
+
+The easiest way to get the address: open your program in the [simulator](/sim), press
+**Share**, copy the link, and change `/sim?p=` to `/embed?p=`. The embed then opens with that
+exact program, inputs, dialect and view.
+
+## In a web page that allows scripts: use the element
+
+```html
+<script src="https://YOUR-JOES-SIM-ADDRESS/joes-sim.js"></script>
+
+<joes-sim dialect="classic" view="datapath" inputs="3, 4">
+  <script type="text/lmc">
+            INP
+            STA first
+            INP
+            ADD first
+            OUT
+            HLT
+    first   DAT
+  </script>
+</joes-sim>
+```
+
+## Options
+
+The same options work as `<joes-sim>` attributes and as `/embed` address parameters.
+
+| Option     | Values                                                    | Default                     |
+| ---------- | --------------------------------------------------------- | --------------------------- |
+| `program`  | The program's source text                                 | The add-two-numbers example |
+| `p`        | A share link's `p` value (program, inputs, dialect, view) | none                        |
+| `inputs`   | Numbers, separated by commas or spaces                    | none                        |
+| `dialect`  | `classic`, `higginson`, `ocr`                             | `classic`                   |
+| `view`     | `datapath`, `story`, `flow`                               | `datapath`                  |
+| `readonly` | Present, or `true`, to stop learners editing the program  | off                         |
+| `panels`   | Any of `editor`, `machine`, `memory`, `explain`, `io`     | `editor,machine,explain,io` |
+| `name`     | A title shown above the simulator                         | none                        |
+
+The element also takes `height` (such as `500px`) and `title` (for screen readers).
+
+## Privacy
+
+The embed sends nothing anywhere. It does not use cookies or save anything, and it works
+offline once the site has been visited.
