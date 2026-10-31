@@ -31,3 +31,10 @@ One file per decision, named `NNNN-short-title.md`, each with four headings:
 | 0024 | [Predict mode](0024-predict-mode.md)                                                 |
 | 0025 | [Backups and .lmc files](0025-backups-and-lmc-files.md)                              |
 | 0026 | [Working offline (first step)](0026-offline.md)                                      |
+| 0027 | [Share links and preview cards](0027-share-links.md)                                 |
+| 0028 | [The embedded simulator](0028-embed.md)                                              |
+| 0029 | [Teacher packs](0029-teacher-packs.md)                                               |
+| 0030 | [Translation](0030-translation.md)                                                   |
+| 0031 | [Full offline use and updates](0031-offline-and-updates.md)                          |
+| 0032 | [The public site and search](0032-public-site.md)                                    |
+| 0033 | [Performance](0033-performance.md)                                                   |

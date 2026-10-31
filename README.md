@@ -20,7 +20,7 @@ the University of Ghana, Legon, and then for students, teachers and self-learner
 | 2     | Core simulator interface                                                              | Done        |
 | 3     | Understanding tools (narration, time travel, traces)                                  | Done        |
 | 4     | Practice, lessons and saving                                                          | Done        |
-| 5     | Sharing, offline, translation and public launch                                       | Not started |
+| 5     | Sharing, offline, translation and public launch                                       | Done        |
 | 6–10  | Extended machine, pipeline and cache, multicore, compiler, custom machines and RISC-V | Not started |
 
 ## Getting started
@@ -44,6 +44,14 @@ pnpm dev          # http://localhost:3000
 | `pnpm format`        | Format the code with Prettier                               |
 
 Before the first `pnpm test:e2e`, install the browser once: `pnpm --filter @joes-sim/web exec playwright install chromium`.
+
+## Deploying
+
+Joe's SIM needs a Node.js server (for example `pnpm build`, then
+`pnpm --filter @joes-sim/web start`), because share links draw their preview cards on request.
+Everything else is static. Set `SITE_URL` to the site's public address (such as
+`https://joes-sim.example.org`) so preview cards and the sitemap use the right links. The site
+has no database and stores nothing about its users.
 
 ## The engine
 
