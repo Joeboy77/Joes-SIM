@@ -49,5 +49,7 @@ test("every control is reachable by keyboard", async ({ page }) => {
   await page.keyboard.press("Tab");
   await expect(page.getByLabel("Theme")).toBeFocused();
   await page.keyboard.press("Tab");
+  await expect(page.getByLabel("Language")).toBeFocused();
+  await page.keyboard.press("Tab");
   await expect(page.getByRole("link", { name: "Open the simulator" })).toBeFocused();
 });
