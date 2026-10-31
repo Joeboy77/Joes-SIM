@@ -14,6 +14,7 @@ export function SiteHeader() {
               ["/sim", "Simulator"],
               ["/learn", "Learn"],
               ["/challenges", "Challenges"],
+              ["/packs", "Packs"],
               ["/progress", "Progress"],
             ] as const
           ).map(([href, label]) => (

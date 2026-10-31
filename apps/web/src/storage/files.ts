@@ -2,6 +2,7 @@
  * Moving work in and out of the browser: single programs as .lmc files and everything as a
  * backup .json file. Pure functions, so they are easy to test; the page does the downloading.
  */
+import { parsePack, type Pack } from "@joes-sim/content";
 import { isDialectId, type DialectId } from "@joes-sim/engine";
 import { normaliseProgress, type Progress } from "./progress";
 import type { WorkspaceFile } from "./workspace";
@@ -44,6 +45,8 @@ export interface Backup {
   readonly files: readonly WorkspaceFile[];
   readonly progress: Progress;
   readonly currentFile: string | null;
+  /** Teacher packs made or opened on this device. Missing from early backups. */
+  readonly packs: readonly Pack[];
 }
 
 export function makeBackup(
@@ -51,6 +54,7 @@ export function makeBackup(
   progress: Progress,
   currentFile: string | null,
   now = new Date(),
+  packs: readonly Pack[] = [],
 ): Backup {
   return {
     format: BACKUP_FORMAT,
@@ -59,6 +63,7 @@ export function makeBackup(
     files,
     progress,
     currentFile,
+    packs,
   };
 }
 
@@ -106,6 +111,16 @@ export function parseBackup(text: string): BackupResult {
       updated: typeof f.updated === "number" ? f.updated : 0,
     });
   }
+  const packs: Pack[] = [];
+  if (data.packs !== undefined) {
+    if (!Array.isArray(data.packs))
+      return { ok: false, error: "The packs in the backup are damaged." };
+    for (const raw of data.packs) {
+      const r = parsePack(raw);
+      if (!r.ok) return { ok: false, error: `A teacher pack in the backup is damaged: ${r.error}` };
+      packs.push(r.pack);
+    }
+  }
   if (data.progress !== undefined && !isObject(data.progress)) {
     return { ok: false, error: "The progress in the backup is damaged." };
   }
@@ -118,6 +133,7 @@ export function parseBackup(text: string): BackupResult {
       files,
       progress: normaliseProgress(data.progress as Partial<Progress> | undefined),
       currentFile: typeof data.currentFile === "string" ? data.currentFile : null,
+      packs,
     },
   };
 }

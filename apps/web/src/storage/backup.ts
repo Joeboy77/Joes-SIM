@@ -1,11 +1,18 @@
 /** Writing a whole backup out of IndexedDB, and restoring one into it. */
 import { FILES, clear, put } from "./db";
 import { makeBackup, type Backup } from "./files";
+import { listPacks, replacePacks } from "./packs";
 import { getProgress, setProgress } from "./progress";
 import { getCurrentFileId, listFiles, setCurrentFileId } from "./workspace";
 
 export async function exportBackup(): Promise<Backup> {
-  return makeBackup(await listFiles(), await getProgress(), await getCurrentFileId());
+  return makeBackup(
+    await listFiles(),
+    await getProgress(),
+    await getCurrentFileId(),
+    new Date(),
+    await listPacks(),
+  );
 }
 
 /** Replaces everything on this device with the backup's contents. */
@@ -13,6 +20,7 @@ export async function restoreBackup(backup: Backup): Promise<void> {
   await clear(FILES);
   for (const f of backup.files) await put(FILES, f);
   await setProgress(backup.progress);
+  await replacePacks(backup.packs);
   const current = backup.currentFile ?? backup.files[0]?.id;
   if (current) await setCurrentFileId(current);
 }

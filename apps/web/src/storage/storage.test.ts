@@ -1,7 +1,17 @@
 import "fake-indexeddb/auto";
 import { IDBFactory } from "fake-indexeddb";
 import { beforeEach, describe, expect, it } from "vitest";
+import { DCIT_207 } from "@joes-sim/content";
 import { exportBackup, restoreBackup } from "./backup";
+import {
+  deletePack,
+  getPack,
+  listPacks,
+  packFileName,
+  packFromLink,
+  packLink,
+  savePack,
+} from "./packs";
 import { closeDb } from "./db";
 import {
   BACKUP_VERSION,
@@ -142,6 +152,7 @@ describe("backups", () => {
     const f = await createFile(program);
     await setCurrentFileId(f.id);
     await updateChallenge("echo", (c) => ({ ...c, solved: true }));
+    await savePack(DCIT_207);
     const text = JSON.stringify(await exportBackup());
 
     // A fresh browser on another device.
@@ -155,6 +166,7 @@ describe("backups", () => {
     expect((await listFiles()).map((x) => x.name)).toEqual(["Add"]);
     expect(await getCurrentFileId()).toBe(f.id);
     expect((await getProgress()).challenges.echo?.solved).toBe(true);
+    expect((await listPacks()).map((p) => p.id)).toEqual(["dcit-207"]);
   });
 
   it("refuses files that are not backups, damaged or from a newer version", () => {
@@ -173,6 +185,10 @@ describe("backups", () => {
       /damaged/,
     );
     expect(bad({ ...good, progress: 3 })).toMatch(/progress in the backup is damaged/);
+    expect(bad({ ...good, packs: 3 })).toMatch(/packs in the backup are damaged/);
+    expect(bad({ ...good, packs: [{ format: "x" }] })).toMatch(
+      /teacher pack in the backup is damaged/,
+    );
     expect(bad(good)).toBe("ok");
   });
 
@@ -194,8 +210,31 @@ describe("backups", () => {
       updated: 0,
     });
     expect(r.ok && r.backup.currentFile).toBeNull();
+    expect(r.ok && r.backup.packs).toEqual([]);
     expect(backupFileName(new Date("2026-10-30T10:00:00Z"))).toBe(
       "joes-sim-backup-2026-10-30.json",
+    );
+  });
+});
+
+describe("teacher packs on the device", () => {
+  it("saves, lists, opens and deletes packs", async () => {
+    await savePack(DCIT_207);
+    await savePack({ ...DCIT_207, id: "a", title: "A first pack" });
+    expect((await listPacks()).map((p) => p.title)).toEqual(["A first pack", DCIT_207.title]);
+    expect((await getPack("a"))?.title).toBe("A first pack");
+    await deletePack("a");
+    expect(await getPack("a")).toBeUndefined();
+  });
+
+  it("puts a whole pack in a link and reads it back", () => {
+    const link = packLink(DCIT_207);
+    expect(link).toMatch(/^\/packs\/view\?pack=/);
+    expect(packFromLink(link.split("pack=")[1] ?? "")).toEqual(DCIT_207);
+    expect(packFromLink(null)).toBeNull();
+    expect(packFromLink("garbage")).toBeNull();
+    expect(packFileName(DCIT_207)).toBe(
+      "DCIT-207-Computer-Organisation-and-Architecture.joes-sim-pack.json",
     );
   });
 });
