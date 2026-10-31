@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Atkinson_Hyperlegible, JetBrains_Mono } from "next/font/google";
+import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "@/styles/globals.css";
 import { OfflineSupport } from "@/components/OfflineSupport";
@@ -18,6 +19,9 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
+  applicationName: SITE_NAME,
+  openGraph: { siteName: SITE_NAME, type: "website" },
   title: {
     default: "Joe's SIM: learn how computers work",
     template: "%s · Joe's SIM",

@@ -26,6 +26,7 @@ import {
 import { useSim } from "../SimProvider";
 import { STARTER_PROGRAM } from "../store";
 import { readHandoff, type Handoff } from "./handoff";
+import { decodeShare } from "./share";
 
 export type SaveStatus = "loading" | "saving" | "saved" | "scratch" | "error";
 
@@ -89,10 +90,21 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     void (async () => {
       try {
-        const handoff = readHandoff(window.location.hash);
+        const shared = decodeShare(new URLSearchParams(window.location.search).get("p"));
+        const handoff: Handoff | null = shared
+          ? {
+              name: shared.name || "Shared program",
+              source: shared.source,
+              dialect: shared.dialect,
+              inputs: shared.inputs,
+              cycle: 0,
+            }
+          : readHandoff(window.location.hash);
         if (handoff) {
-          history.replaceState(null, "", window.location.pathname);
+          // A share link stays in the address bar, so reloading reopens it; a challenge link does not.
+          if (!shared) history.replaceState(null, "", window.location.pathname);
           const s = store.getState();
+          if (shared) s.setView(shared.view);
           s.setDialect(handoff.dialect);
           s.setInputText(handoff.inputs);
           s.setSource(handoff.source);
@@ -246,6 +258,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       setFile(f);
       setScratch(null);
       setStatus("saved");
+      history.replaceState(null, "", window.location.pathname);
       await refresh();
     },
   };

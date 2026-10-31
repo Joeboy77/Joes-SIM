@@ -65,6 +65,9 @@ importers:
       '@joes-sim/content':
         specifier: workspace:*
         version: link:../../packages/content
+      '@joes-sim/embed':
+        specifier: workspace:*
+        version: link:../../packages/embed
       '@joes-sim/engine':
         specifier: workspace:*
         version: link:../../packages/engine
@@ -86,6 +89,9 @@ importers:
       '@next/mdx':
         specifier: ^16.4.3
         version: 16.4.3(@mdx-js/loader@3.1.1)(@mdx-js/react@3.1.1(@types/react@19.3.0)(react@19.3.1))
+      lz-string:
+        specifier: ^1.5.0
+        version: 1.5.0
       motion:
         specifier: ^14.8.0
         version: 14.8.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -2144,6 +2150,10 @@ packages:
 
   lru-cache@5.1.1:
     resolution: {integrity: sha512-KpNARQA3Iwv+jTA0utUVVbrh+Jlrr1Fv0e56GGzAFOXN7dk/FviaDW8LHmK52DlcH4WP2n6gI8vN1aesBFgo9w==}
+
+  lz-string@1.5.0:
+    resolution: {integrity: sha512-h5bgJWpxJNswbU7qCrV0tIKQCaS3blPDrqKWx+QxzuzL1zGUzij9XCWLrSLsJPu5t+eWA/ycetzYAO5IOMcWAQ==}
+    hasBin: true
 
   magic-string@0.30.21:
     resolution: {integrity: sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ==}
@@ -5106,6 +5116,8 @@ snapshots:
   lru-cache@5.1.1:
     dependencies:
       yallist: 3.1.1
+
+  lz-string@1.5.0: {}
 
   magic-string@0.30.21:
     dependencies:

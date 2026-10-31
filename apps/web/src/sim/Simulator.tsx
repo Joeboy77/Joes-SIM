@@ -17,6 +17,7 @@ import { SimProvider, useSimState } from "./SimProvider";
 import { PredictPanel } from "./predict/PredictPanel";
 import { usePlaybackLoop } from "./usePlayback";
 import { FilesMenu } from "./workspace/FilesMenu";
+import { ShareButton } from "./workspace/ShareDialog";
 import { WorkspaceProvider } from "./workspace/Workspace";
 
 // On phones every part is a tab. On larger screens the inputs and output stay in view and the
@@ -96,6 +97,7 @@ function Layout() {
         </div>
         <h1 className="sr-only">Simulator</h1>
         <div className="flex items-center gap-2">
+          <ShareButton />
           <Shortcuts />
           <ThemeSwitcher />
         </div>
