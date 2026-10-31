@@ -1,0 +1,55 @@
+/**
+ * English, the reference catalogue. Every other language has the same keys; a key it does not
+ * have yet falls back to English. `{name}` is filled in from values.
+ */
+export const en = {
+  "nav.main": "Main",
+  "nav.skip": "Skip to content",
+  "nav.simulator": "Simulator",
+  "nav.learn": "Learn",
+  "nav.challenges": "Challenges",
+  "nav.packs": "Packs",
+  "nav.progress": "Progress",
+  "footer.site": "Site",
+  "footer.docs": "Docs",
+  "footer.reference": "Instruction reference",
+  "footer.about": "About",
+  "footer.privacy": "Privacy",
+  "footer.contribute": "Contribute",
+  "footer.tagline":
+    "Free and open source. No account, no tracking. Your work stays on your device.",
+  "theme.label": "Theme",
+  "theme.system": "Match device",
+  "theme.light": "Light",
+  "theme.dark": "Dark",
+  "theme.high-contrast": "High contrast",
+  "language.label": "Language",
+  "language.partial": "{language} (partly translated)",
+  "run.toolbar": "Run controls",
+  "run.reset": "Reset",
+  "run.backInstruction": "Step back one instruction",
+  "run.backMicro": "Step back one micro-step",
+  "run.run": "Run",
+  "run.pause": "Pause",
+  "run.micro": "Micro",
+  "run.microLabel": "Step one micro-step",
+  "run.step": "Step",
+  "run.stepLabel": "Step one instruction",
+  "run.settings": "Speed, dialect and view",
+  "run.timeline": "Step",
+  "run.speed": "Speed",
+  "run.dialect": "Dialect",
+  "run.view": "View",
+  "run.presentation": "Presentation mode",
+  "tabs.panels": "Simulator panels",
+  "tabs.side": "Side panels",
+  "tabs.code": "Code",
+  "tabs.machine": "Machine",
+  "tabs.explain": "Explain",
+  "tabs.trace": "Trace",
+  "tabs.watch": "Watch",
+  "tabs.io": "Inputs & output",
+} as const;
+
+export type MessageKey = keyof typeof en;
+export type Messages = Readonly<Record<MessageKey, string>>;

@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Atkinson_Hyperlegible, JetBrains_Mono } from "next/font/google";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
+import { LOCALE_INIT_SCRIPT } from "@/i18n/locales";
+import { LocaleRoot } from "@/i18n/useLocale";
 import "@/styles/globals.css";
 import { OfflineSupport } from "@/components/OfflineSupport";
 
@@ -40,10 +42,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${sans.variable} ${mono.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: LOCALE_INIT_SCRIPT }} />
       </head>
       <body className="min-h-dvh bg-bg text-text antialiased">
         {children}
         <OfflineSupport />
+        <LocaleRoot />
       </body>
     </html>
   );

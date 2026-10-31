@@ -7,13 +7,7 @@ import {
   resolveTheme,
   type ThemePreference,
 } from "@/lib/theme";
-
-const LABELS: Record<ThemePreference, string> = {
-  system: "Match device",
-  light: "Light",
-  dark: "Dark",
-  "high-contrast": "High contrast",
-};
+import { useT } from "@/i18n/useLocale";
 
 const listeners = new Set<() => void>();
 
@@ -38,8 +32,11 @@ function applyTheme(preference: ThemePreference) {
   });
 }
 
+const PREFERENCES: readonly ThemePreference[] = ["system", "light", "dark", "high-contrast"];
+
 export function ThemeSwitcher() {
   const id = useId();
+  const t = useT();
   const preference = useSyncExternalStore(subscribe, readPreference, () => "system");
 
   const choose = useCallback((next: ThemePreference) => {
@@ -68,7 +65,7 @@ export function ThemeSwitcher() {
   return (
     <div className="flex items-center gap-2 text-sm">
       <label htmlFor={id} className="text-muted">
-        Theme
+        {t("theme.label")}
       </label>
       <select
         id={id}
@@ -78,9 +75,9 @@ export function ThemeSwitcher() {
         }}
         className="rounded-sm border border-border-strong bg-surface px-2 py-1 text-text"
       >
-        {(Object.keys(LABELS) as ThemePreference[]).map((value) => (
+        {PREFERENCES.map((value) => (
           <option key={value} value={value}>
-            {LABELS[value]}
+            {t(`theme.${value}`)}
           </option>
         ))}
       </select>

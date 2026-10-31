@@ -2,6 +2,7 @@
 
 import { DIALECTS, DIALECT_IDS, isDialectId } from "@joes-sim/engine";
 import { useId, useState } from "react";
+import { useT } from "@/i18n/useLocale";
 import { usePlayback } from "../usePlayback";
 import { useSim, useSimState } from "../SimProvider";
 import { SPEEDS, SPEED_ORDER, type Speed } from "../speeds";
@@ -63,6 +64,7 @@ export function RunBar() {
   const viewId = useId();
   const timelineId = useId();
   const [settings, setSettings] = useState(false);
+  const t = useT();
 
   const ready = state?.status === "ready";
   const atStart = !state || state.microSteps === 0;
@@ -72,14 +74,14 @@ export function RunBar() {
     <div
       className="flex flex-wrap items-center gap-2 border-b border-border bg-surface px-3 py-2"
       role="toolbar"
-      aria-label="Run controls"
+      aria-label={t("run.toolbar")}
     >
-      <Button label="Reset" shortcut="R" onClick={() => a.reset()} disabled={!state}>
+      <Button label={t("run.reset")} shortcut="R" onClick={() => a.reset()} disabled={!state}>
         <span aria-hidden="true">⟲</span>
-        <span className="hidden sm:inline">Reset</span>
+        <span className="hidden sm:inline">{t("run.reset")}</span>
       </Button>
       <Button
-        label="Step back one instruction"
+        label={t("run.backInstruction")}
         shortcut="Shift+S"
         onClick={() => a.backInstruction()}
         disabled={atStart || playing}
@@ -87,7 +89,7 @@ export function RunBar() {
         <span aria-hidden="true">⏮</span>
       </Button>
       <Button
-        label="Step back one micro-step"
+        label={t("run.backMicro")}
         shortcut="Shift+M"
         onClick={() => a.back()}
         disabled={atStart || playing}
@@ -95,32 +97,32 @@ export function RunBar() {
         <span aria-hidden="true">◀</span>
       </Button>
       <Button
-        label={playing || busy ? "Pause" : "Run"}
+        label={playing || busy ? t("run.pause") : t("run.run")}
         shortcut="P"
         onClick={toggle}
         disabled={!state || (!ready && !playing) || speed === "manual"}
         primary
       >
         <span aria-hidden="true">{playing || busy ? "⏸" : "▶"}</span>
-        <span>{playing || busy ? "Pause" : "Run"}</span>
+        <span>{playing || busy ? t("run.pause") : t("run.run")}</span>
       </Button>
       <Button
-        label="Step one micro-step"
+        label={t("run.microLabel")}
         shortcut="M"
         onClick={() => a.stepMicro()}
         disabled={!ready || playing}
       >
         <span aria-hidden="true">▷</span>
-        <span className="hidden sm:inline">Micro</span>
+        <span className="hidden sm:inline">{t("run.micro")}</span>
       </Button>
       <Button
-        label="Step one instruction"
+        label={t("run.stepLabel")}
         shortcut="S"
         onClick={() => a.stepInstruction()}
         disabled={!ready || playing}
       >
         <span aria-hidden="true">⏭</span>
-        <span className="hidden sm:inline">Step</span>
+        <span className="hidden sm:inline">{t("run.step")}</span>
       </Button>
 
       <button
@@ -129,12 +131,12 @@ export function RunBar() {
         aria-expanded={settings}
         onClick={() => setSettings(!settings)}
       >
-        <span aria-hidden="true">⚙</span> <span className="sr-only">Speed, dialect and view</span>
+        <span aria-hidden="true">⚙</span> <span className="sr-only">{t("run.settings")}</span>
       </button>
 
       <div className="order-last flex w-full min-w-40 items-center gap-2 lg:order-none lg:w-auto lg:flex-1">
         <label htmlFor={timelineId} className="text-sm text-muted">
-          Step
+          {t("run.timeline")}
         </label>
         <input
           id={timelineId}
@@ -157,7 +159,7 @@ export function RunBar() {
       >
         <div className="flex items-center gap-1">
           <label htmlFor={speedId} className="text-sm text-muted">
-            Speed
+            {t("run.speed")}
           </label>
           <select
             id={speedId}
@@ -175,7 +177,7 @@ export function RunBar() {
 
         <div className="flex items-center gap-1">
           <label htmlFor={dialectId} className="text-sm text-muted">
-            Dialect
+            {t("run.dialect")}
           </label>
           <select
             id={dialectId}
@@ -193,7 +195,7 @@ export function RunBar() {
 
         <div className="flex items-center gap-1">
           <label htmlFor={viewId} className="text-sm text-muted">
-            View
+            {t("run.view")}
           </label>
           <select
             id={viewId}
@@ -209,7 +211,7 @@ export function RunBar() {
             ))}
           </select>
         </div>
-        <Button label="Presentation mode" shortcut="F" onClick={() => a.togglePresentation()}>
+        <Button label={t("run.presentation")} shortcut="F" onClick={() => a.togglePresentation()}>
           <span aria-hidden="true">⛶</span>
         </Button>
       </div>

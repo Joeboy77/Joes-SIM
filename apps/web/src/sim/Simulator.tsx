@@ -15,6 +15,7 @@ import { TracePanel } from "./panels/TracePanel";
 import { WatchPanel } from "./panels/WatchPanel";
 import { SimProvider, useSimState } from "./SimProvider";
 import { PredictPanel } from "./predict/PredictPanel";
+import { useT } from "@/i18n/useLocale";
 import { usePlaybackLoop } from "./usePlayback";
 import { FilesMenu } from "./workspace/FilesMenu";
 import { ShareButton } from "./workspace/ShareDialog";
@@ -23,18 +24,18 @@ import { WorkspaceProvider } from "./workspace/Workspace";
 // On phones every part is a tab. On larger screens the inputs and output stay in view and the
 // other side panels share tabs.
 const TABS = [
-  { id: "code", label: "Code" },
-  { id: "machine", label: "Machine" },
-  { id: "explain", label: "Explain" },
-  { id: "trace", label: "Trace" },
-  { id: "watch", label: "Watch" },
-  { id: "io", label: "Inputs & output" },
+  { id: "code", label: "tabs.code" },
+  { id: "machine", label: "tabs.machine" },
+  { id: "explain", label: "tabs.explain" },
+  { id: "trace", label: "tabs.trace" },
+  { id: "watch", label: "tabs.watch" },
+  { id: "io", label: "tabs.io" },
 ] as const;
 type Tab = (typeof TABS)[number]["id"];
 const SIDE_TABS = [
-  { id: "explain", label: "Explain" },
-  { id: "trace", label: "Trace" },
-  { id: "watch", label: "Watch" },
+  { id: "explain", label: "tabs.explain" },
+  { id: "trace", label: "tabs.trace" },
+  { id: "watch", label: "tabs.watch" },
 ] as const;
 type SideTab = (typeof SIDE_TABS)[number]["id"];
 const SIDE = new Set<Tab>(["explain", "trace", "watch", "io"]);
@@ -59,6 +60,8 @@ function Layout() {
   usePlaybackLoop();
   const presentation = useSimState((s) => s.presentation);
   const [tab, setTab] = useState<Tab>("code");
+  const translate = useT();
+  const t = translate;
   const [side, setSide] = useState<SideTab>("explain");
   /** Shown on phones when its tab is chosen, and on larger screens when its side tab is. */
   const sideClass = (id: SideTab) =>
@@ -110,7 +113,7 @@ function Layout() {
       <StatusLine />
 
       <nav
-        aria-label="Simulator panels"
+        aria-label={t("tabs.panels")}
         className="flex border-b border-border bg-surface lg:hidden"
       >
         {TABS.map((t) => (
@@ -121,7 +124,7 @@ function Layout() {
             onClick={() => setTab(t.id)}
             className={`min-h-11 flex-1 px-0.5 text-xs leading-tight font-bold sm:text-sm ${tab === t.id ? "border-b-4 border-accent text-text" : "text-muted"}`}
           >
-            {t.label}
+            {translate(t.label)}
           </button>
         ))}
       </nav>
@@ -150,7 +153,7 @@ function Layout() {
           </div>
           <div
             role="group"
-            aria-label="Side panels"
+            aria-label={t("tabs.side")}
             className="hidden gap-1 border-b border-border lg:flex"
           >
             {SIDE_TABS.map((t) => (
@@ -161,7 +164,7 @@ function Layout() {
                 onClick={() => setSide(t.id)}
                 className={`min-h-11 flex-1 text-sm font-bold ${side === t.id ? "border-b-4 border-accent text-text" : "text-muted"}`}
               >
-                {t.label}
+                {translate(t.label)}
               </button>
             ))}
           </div>
