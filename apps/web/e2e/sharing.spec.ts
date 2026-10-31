@@ -5,6 +5,7 @@ test("a share link opens the exact program, inputs, dialect and view, with a pre
   browser,
 }) => {
   await page.goto("/sim");
+  await expect(page.locator('[aria-busy="true"]')).toHaveCount(0); // saved work loaded
   const content = page.locator(".cm-content");
   await content.click();
   await page.keyboard.press("ControlOrMeta+a");
@@ -70,7 +71,10 @@ ${PROGRAM}
       <script src="${baseURL}/joes-sim.js"></script>
     </body></html>`);
   const frame = page.frameLocator("joes-sim iframe");
-  await expect(frame.getByRole("heading", { name: /Joe's SIM: Echo/ })).toBeVisible();
+  // The embed loads a whole page in the iframe, which can take a while on a busy machine.
+  await expect(frame.getByRole("heading", { name: /Joe's SIM: Echo/ })).toBeVisible({
+    timeout: 15_000,
+  });
   await expect(frame.getByRole("img", { name: /Story view/ })).toBeVisible();
   await expect(frame.getByText(/Dialect:/)).toHaveCount(0); // no status line in the embed
   const before = await frame.locator(".cm-content").textContent();

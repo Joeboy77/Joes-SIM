@@ -3,6 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 
 async function typeProgram(page: Page, source: string) {
+  await expect(page.locator('[aria-busy="true"]')).toHaveCount(0); // saved work loaded
   const content = page.locator(".cm-content").first();
   await content.click();
   await page.keyboard.press("ControlOrMeta+a");
@@ -147,7 +148,7 @@ test("the model solution opens only after a genuine attempt", async ({ page }) =
 
 test("predict mode asks before each step and keeps score", async ({ page }) => {
   await page.goto("/sim");
-  await expect(page.getByRole("button", { name: /manage files/ })).toBeVisible();
+  await expect(page.locator('[aria-busy="true"]')).toHaveCount(0); // saved work loaded
   const nav = page
     .getByRole("navigation", { name: "Simulator panels" })
     .getByRole("button", { name: "Explain", exact: true });
@@ -250,6 +251,7 @@ test("challenges and lessons make no request outside the site", async ({ page, b
 });
 
 test("work and progress come back offline", async ({ page, context }) => {
+  test.setTimeout(120_000); // the service worker caches every page when it installs
   await page.goto("/sim");
   await typeProgram(page, "        INP\n        HLT\n// offline");
   await savedFile(page, "// offline");

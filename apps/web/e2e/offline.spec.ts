@@ -18,6 +18,7 @@ async function installed(page: Page) {
 }
 
 async function typeProgram(page: Page, source: string) {
+  await expect(page.locator('[aria-busy="true"]')).toHaveCount(0); // saved work loaded
   const content = page.locator(".cm-content").first();
   await content.click();
   await page.keyboard.press("ControlOrMeta+a");

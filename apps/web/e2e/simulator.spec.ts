@@ -41,6 +41,8 @@ async function typeProgram(page: Page, source: string) {
 test.beforeEach(async ({ page }) => {
   await page.goto("/sim");
   await expect(page.locator(".cm-editor")).toBeVisible();
+  // Shortcuts wait until the learner's saved work has loaded.
+  await expect(page.locator('[aria-busy="true"]')).toHaveCount(0);
 });
 
 test("a beginner can run the add-two-numbers program and see 7", async ({ page }) => {

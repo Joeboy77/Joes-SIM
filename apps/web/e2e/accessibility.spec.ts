@@ -43,7 +43,7 @@ test("motion is reduced when the device asks", async ({ browser }) => {
   const context = await browser.newContext({ reducedMotion: "reduce" });
   const page = await context.newPage();
   await page.goto("/sim");
-  await expect(page.getByRole("button", { name: /manage files/ })).toBeVisible(); // work loaded
+  await expect(page.locator('[aria-busy="true"]')).toHaveCount(0); // saved work has loaded
   const machine = page
     .getByRole("navigation", { name: "Simulator panels" })
     .getByRole("button", { name: "Machine" });
