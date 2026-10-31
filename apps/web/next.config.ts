@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
   // Workspace packages ship TypeScript source; Next compiles them.
   transpilePackages: [
     "@joes-sim/content",
+    "@joes-sim/embed",
     "@joes-sim/engine",
     "@joes-sim/narration",
     "@joes-sim/ui",

@@ -138,7 +138,7 @@ const theme = EditorView.theme({
   },
 });
 
-export function Editor() {
+export function Editor({ readOnly = false }: { readOnly?: boolean }) {
   const store = useSim();
   const host = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
@@ -176,6 +176,7 @@ export function Editor() {
         if (text !== store.getState().source) store.getState().setSource(text);
       }),
       theme,
+      EditorState.readOnly.of(readOnly),
     ];
     const view = new EditorView({
       state: EditorState.create({ doc: store.getState().source, extensions }),
@@ -189,7 +190,7 @@ export function Editor() {
       view.destroy();
       viewRef.current = null;
     };
-  }, [store]);
+  }, [store, readOnly]);
 
   // Keep diagnostics, breakpoints and the current line in step with the store.
   useEffect(() => {

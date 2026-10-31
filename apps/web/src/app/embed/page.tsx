@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
+import { EmbedSim } from "./EmbedSim";
 
 export const metadata: Metadata = { title: "Embedded simulator", robots: { index: false } };
 
-// The embeddable simulator (brief, Section 7.12). No site chrome: it lives inside iframes.
+// The embeddable simulator (brief, 7.12). No site chrome: it lives inside iframes and
+// <joes-sim> elements. Options come from the address; see /docs/embed.
 export default function EmbedPage() {
   return (
-    <main className="p-4">
-      <h1 className="text-lg font-bold">Joe&apos;s SIM</h1>
-      <p className="text-sm text-muted">The embeddable simulator arrives in Phase 5.</p>
+    <main>
+      <EmbedSim />
     </main>
   );
 }
