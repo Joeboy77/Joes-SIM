@@ -292,7 +292,7 @@ export function TracePanel() {
                 <th
                   key={c.id}
                   scope="col"
-                  className="border-b border-border px-2 py-1 text-left font-sans"
+                  className="border-b border-border px-2 py-1 text-start font-sans"
                 >
                   {c.label}
                 </th>

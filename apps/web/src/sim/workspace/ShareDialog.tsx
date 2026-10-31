@@ -96,7 +96,7 @@ export function ShareButton() {
               Share to an app
             </button>
           )}
-          <form method="dialog" className="ml-auto">
+          <form method="dialog" className="ms-auto">
             <button className="min-h-11 rounded-md border border-border-strong px-4">Close</button>
           </form>
         </div>

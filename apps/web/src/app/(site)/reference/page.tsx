@@ -93,9 +93,9 @@ export default function ReferencePage() {
       </div>
 
       <table className="w-full border-collapse text-sm">
-        <caption className="mb-2 text-left text-lg font-bold">Instructions</caption>
+        <caption className="mb-2 text-start text-lg font-bold">Instructions</caption>
         <thead>
-          <tr className="text-left">
+          <tr className="text-start">
             <th scope="col" className="border-b-2 border-border-strong p-2">
               Code
             </th>
@@ -117,7 +117,7 @@ export default function ReferencePage() {
           {INSTRUCTIONS.map(({ m, operand, does, flag }) => (
             <tr key={m}>
               <td className="border-b border-border p-2 font-mono">{code(m, operand)}</td>
-              <th scope="row" className="border-b border-border p-2 text-left font-mono">
+              <th scope="row" className="border-b border-border p-2 text-start font-mono">
                 {m}
                 {operand ? " xx" : ""}
               </th>

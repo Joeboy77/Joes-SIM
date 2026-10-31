@@ -95,7 +95,7 @@ export function Shortcuts() {
           <tbody>
             {SHORTCUTS.map(([keys, what]) => (
               <tr key={keys} className="border-b border-border">
-                <th scope="row" className="py-1.5 pr-4 text-left font-mono font-normal">
+                <th scope="row" className="py-1.5 pe-4 text-start font-mono font-normal">
                   {keys}
                 </th>
                 <td className="py-1.5">{what}</td>
@@ -107,7 +107,7 @@ export function Shortcuts() {
           Shortcuts work when you are not typing in the editor or a box. Ctrl+Enter works
           everywhere.
         </p>
-        <form method="dialog" className="mt-4 text-right">
+        <form method="dialog" className="mt-4 text-end">
           <button className="min-h-11 rounded-md bg-accent px-4 font-bold text-on-accent">
             Close
           </button>

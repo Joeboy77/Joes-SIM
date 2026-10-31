@@ -66,7 +66,7 @@ export function ProgressView() {
           <table className="w-full max-w-2xl border-collapse text-sm">
             <caption className="sr-only">Best scores for solved challenges</caption>
             <thead>
-              <tr className="text-left">
+              <tr className="text-start">
                 <th scope="col" className="border-b border-border py-1">
                   Challenge
                 </th>
@@ -95,7 +95,7 @@ export function ProgressView() {
                   );
                 return (
                   <tr key={c.id}>
-                    <th scope="row" className="border-b border-border py-1 text-left font-normal">
+                    <th scope="row" className="border-b border-border py-1 text-start font-normal">
                       <Link href={`/challenges/${c.id}`} className="text-accent underline">
                         {c.title}
                       </Link>

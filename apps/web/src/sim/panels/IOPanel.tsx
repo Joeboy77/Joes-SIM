@@ -66,7 +66,7 @@ export function IOPanel() {
             aria-label={`Inputs: ${consumed} of ${queue.length} read`}
           >
             {queue.map((v, i) => (
-              <span key={i} className={i < consumed ? "mr-2 text-muted line-through" : "mr-2"}>
+              <span key={i} className={i < consumed ? "me-2 text-muted line-through" : "me-2"}>
                 {formatValue(v)}
               </span>
             ))}

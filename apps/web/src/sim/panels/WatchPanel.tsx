@@ -186,7 +186,7 @@ export function WatchPanel() {
               Watched values, in decimal, binary, hexadecimal and two&apos;s complement
             </caption>
             <thead>
-              <tr className="text-left">
+              <tr className="text-start">
                 <th scope="col" className="border-b border-border px-1 py-1">
                   Value of
                 </th>
@@ -217,7 +217,7 @@ export function WatchPanel() {
                   <tr key={JSON.stringify(w)}>
                     <th
                       scope="row"
-                      className="border-b border-border px-1 py-1 text-left font-sans font-normal"
+                      className="border-b border-border px-1 py-1 text-start font-sans font-normal"
                     >
                       {targetName(w, program)}
                     </th>

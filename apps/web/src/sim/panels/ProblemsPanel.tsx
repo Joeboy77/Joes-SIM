@@ -31,7 +31,7 @@ export function Hints({
   return (
     <div className="mt-1 space-y-1">
       {hints.slice(0, shown).map((h, i) => (
-        <p key={i} className="border-l-4 border-branch pl-2">
+        <p key={i} className="border-s-4 border-branch ps-2">
           <span className="font-bold">{TIER[i]}:</span> {h}
         </p>
       ))}

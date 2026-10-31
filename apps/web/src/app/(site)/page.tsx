@@ -93,7 +93,7 @@ export default function HomePage() {
         <h2 id="promise-h" className="text-2xl font-bold">
           Free, private and works anywhere
         </h2>
-        <ul className="max-w-2xl list-disc space-y-1 pl-6">
+        <ul className="max-w-2xl list-disc space-y-1 ps-6">
           <li>No account. Open it and start; your work saves itself on your device.</li>
           <li>Works offline after your first visit, and installs as an app.</li>
           <li>

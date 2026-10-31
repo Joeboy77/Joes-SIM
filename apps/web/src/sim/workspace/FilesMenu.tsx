@@ -120,7 +120,7 @@ export function FilesMenu() {
                       type="button"
                       aria-current={isCurrent ? "true" : undefined}
                       onClick={() => void ws.open(f.id).then(() => setOpen(false))}
-                      className="min-h-11 grow truncate rounded-sm px-2 text-left font-bold text-accent underline-offset-4 hover:underline"
+                      className="min-h-11 grow truncate rounded-sm px-2 text-start font-bold text-accent underline-offset-4 hover:underline"
                     >
                       {f.name}
                       {isCurrent && <span className="font-normal text-muted"> (open)</span>}
@@ -200,7 +200,7 @@ export function FilesMenu() {
               setOpen(false);
             }}
           />
-          <form method="dialog" className="ml-auto">
+          <form method="dialog" className="ms-auto">
             <button className="min-h-11 rounded-md border border-border-strong px-3">Close</button>
           </form>
         </div>

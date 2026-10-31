@@ -23,7 +23,7 @@ export function Highlight({ component, children }: { component: Component; child
 
 export function Note({ children }: { children: ReactNode }) {
   return (
-    <aside className="my-4 max-w-prose rounded-md border-l-4 border-accent bg-surface-2 p-3">
+    <aside className="my-4 max-w-prose rounded-md border-s-4 border-accent bg-surface-2 p-3">
       {children}
     </aside>
   );

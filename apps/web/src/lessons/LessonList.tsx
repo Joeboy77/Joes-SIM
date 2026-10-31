@@ -29,7 +29,7 @@ export function LessonList() {
                 {l.title}
               </Link>
               {done && (
-                <span className="ml-2 text-sm font-bold text-success">
+                <span className="ms-2 text-sm font-bold text-success">
                   <span aria-hidden="true">✓ </span>Finished
                 </span>
               )}

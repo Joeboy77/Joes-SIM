@@ -13,8 +13,8 @@ const components: MDXComponents = {
   h2: (p) => <h2 className="mt-8 mb-2 text-2xl font-bold" {...p} />,
   h3: (p) => <h3 className="mt-6 mb-2 text-xl font-bold" {...p} />,
   p: (p) => <p className="my-3 max-w-prose leading-relaxed" {...p} />,
-  ul: (p) => <ul className="my-3 max-w-prose list-disc space-y-1 pl-6" {...p} />,
-  ol: (p) => <ol className="my-3 max-w-prose list-decimal space-y-1 pl-6" {...p} />,
+  ul: (p) => <ul className="my-3 max-w-prose list-disc space-y-1 ps-6" {...p} />,
+  ol: (p) => <ol className="my-3 max-w-prose list-decimal space-y-1 ps-6" {...p} />,
   code: (p) => <code className="rounded-sm bg-surface-2 px-1 font-mono text-[0.95em]" {...p} />,
   // Long code examples scroll sideways; keyboard users must be able to reach them.
   pre: (p) => (
@@ -26,7 +26,7 @@ const components: MDXComponents = {
   ),
   strong: (p) => <strong className="font-bold" {...p} />,
   table: (p) => <table className="my-3 border-collapse text-sm" {...p} />,
-  th: (p) => <th className="border border-border px-2 py-1 text-left" {...p} />,
+  th: (p) => <th className="border border-border px-2 py-1 text-start" {...p} />,
   td: (p) => <td className="border border-border px-2 py-1" {...p} />,
 };
 

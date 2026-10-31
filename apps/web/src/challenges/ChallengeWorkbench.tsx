@@ -243,7 +243,7 @@ function Results({
     return (
       <div role="alert" className="rounded-sm border border-danger p-2 text-sm">
         <p className="font-bold text-danger">The program has errors, so the tests did not run.</p>
-        <ul className="list-disc pl-5">
+        <ul className="list-disc ps-5">
           {result.errors.map((e, i) => (
             <li key={i}>
               Line {e.line}: {e.message}
