@@ -40,9 +40,11 @@ test("every control is reachable by keyboard", async ({ page }) => {
   await expect(page.getByRole("link", { name: "Joe's SIM" })).toBeFocused();
   await page.keyboard.press("Tab");
   await expect(page.getByRole("link", { name: "Simulator", exact: true })).toBeFocused();
-  for (const name of ["Learn", "Challenges", "Progress"]) {
+  for (const name of ["Learn", "Challenges", "Packs", "Progress"]) {
     await page.keyboard.press("Tab");
-    await expect(page.getByRole("link", { name, exact: true })).toBeFocused();
+    await expect(
+      page.getByRole("navigation", { name: "Main" }).getByRole("link", { name, exact: true }),
+    ).toBeFocused();
   }
   await page.keyboard.press("Tab");
   await expect(page.getByLabel("Theme")).toBeFocused();

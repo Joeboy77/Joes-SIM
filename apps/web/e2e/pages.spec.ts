@@ -10,6 +10,16 @@ const PAGES = [
   { path: "/challenges", heading: "Challenges" },
   { path: "/challenges/max-of-two", heading: "The bigger one" },
   { path: "/progress", heading: "Your progress" },
+  { path: "/packs", heading: "Teacher packs" },
+  { path: "/packs/view?id=dcit-207", heading: /DCIT 207/ },
+  { path: "/packs/edit", heading: "Edit a teacher pack" },
+  { path: "/reference", heading: "Instruction reference" },
+  { path: "/docs", heading: "Docs" },
+  { path: "/docs/embed", heading: "Embedding the simulator" },
+  { path: "/docs/getting-started", heading: "Getting started" },
+  { path: "/about", heading: "About Joe's SIM" },
+  { path: "/privacy", heading: "Privacy" },
+  { path: "/contribute", heading: "Contribute" },
 ];
 const THEMES = ["light", "dark", "high-contrast"] as const;
 
