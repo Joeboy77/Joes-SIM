@@ -15,7 +15,8 @@ import {
   type DecorationSet,
 } from "@codemirror/view";
 import type { Diagnostic } from "@joes-sim/engine";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
+import { useStore } from "zustand";
 import { useSim } from "../SimProvider";
 import { lmcCompletions, lmcHighlight, lmcLanguage } from "./lmc-language";
 
@@ -138,6 +139,21 @@ const theme = EditorView.theme({
   },
 });
 
+const readyListeners = new Set<() => void>();
+
+/** The program as plain text, in the editor's font and layout, shown until CodeMirror loads. */
+function SourcePreview({ store }: { store: ReturnType<typeof useSim> }) {
+  const source = useStore(store, (s) => s.source);
+  return (
+    <pre
+      aria-hidden="true"
+      className="m-0 h-full overflow-hidden bg-surface py-1 ps-12 font-mono text-[0.95rem] leading-[1.4] text-text"
+    >
+      {source}
+    </pre>
+  );
+}
+
 export function Editor({ readOnly = false }: { readOnly?: boolean }) {
   const store = useSim();
   const host = useRef<HTMLDivElement>(null);
@@ -178,17 +194,30 @@ export function Editor({ readOnly = false }: { readOnly?: boolean }) {
       theme,
       EditorState.readOnly.of(readOnly),
     ];
-    const view = new EditorView({
-      state: EditorState.create({ doc: store.getState().source, extensions }),
-      parent: host.current,
+    // Build the editor just after the first paint, so the plain-text preview shows straight away
+    // and the page is drawn before the editor's work starts.
+    let view: EditorView | null = null;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const frame = requestAnimationFrame(() => {
+      timer = setTimeout(() => {
+        if (!host.current) return;
+        view = new EditorView({
+          state: EditorState.create({ doc: store.getState().source, extensions }),
+          parent: host.current,
+        });
+        // The scroll area must be reachable by keyboard for long programs (axe: scrollable-region-focusable).
+        view.scrollDOM.tabIndex = 0;
+        view.scrollDOM.setAttribute("aria-label", "Program code, scrollable");
+        viewRef.current = view;
+        readyListeners.forEach((l) => l());
+      }, 0);
     });
-    // The scroll area must be reachable by keyboard for long programs (axe: scrollable-region-focusable).
-    view.scrollDOM.tabIndex = 0;
-    view.scrollDOM.setAttribute("aria-label", "Program code, scrollable");
-    viewRef.current = view;
     return () => {
-      view.destroy();
+      cancelAnimationFrame(frame);
+      clearTimeout(timer);
+      view?.destroy();
       viewRef.current = null;
+      readyListeners.forEach((l) => l());
     };
   }, [store, readOnly]);
 
@@ -211,7 +240,9 @@ export function Editor({ readOnly = false }: { readOnly?: boolean }) {
       });
     };
     sync();
-    return store.subscribe((s, prev) => {
+    // Once the editor exists, show the current diagnostics, breakpoints and line in it.
+    readyListeners.add(sync);
+    const unsubscribe = store.subscribe((s, prev) => {
       // The program can change from outside the editor: opening a file, a draft, a backup.
       const view = viewRef.current;
       if (view && s.source !== prev.source && s.source !== view.state.doc.toString()) {
@@ -224,7 +255,24 @@ export function Editor({ readOnly = false }: { readOnly?: boolean }) {
       )
         sync();
     });
+    return () => {
+      unsubscribe();
+      readyListeners.delete(sync);
+    };
   }, [store]);
 
-  return <div ref={host} className="h-full min-h-48 overflow-hidden" data-testid="editor" />;
+  // Until the editor has loaded, show the program as plain text so it appears straight away.
+  const ready = useSyncExternalStore(
+    (notify) => {
+      readyListeners.add(notify);
+      return () => readyListeners.delete(notify);
+    },
+    () => viewRef.current !== null,
+    () => false,
+  );
+  return (
+    <div ref={host} className="relative h-full min-h-48 overflow-hidden" data-testid="editor">
+      {!ready && <SourcePreview store={store} />}
+    </div>
+  );
 }

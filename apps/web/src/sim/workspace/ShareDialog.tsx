@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
+
+const noSubscribe = () => () => undefined;
 import { useSimState } from "../SimProvider";
 import { LONG_LINK, sharePath } from "./share";
 import { useWorkspace } from "./Workspace";
@@ -26,10 +28,18 @@ export function ShareButton() {
   }, [open]);
 
   const name = ws.scratch?.name ?? ws.file?.name ?? "";
-  const link =
-    typeof window === "undefined"
-      ? ""
-      : `${window.location.origin}${sharePath({ name, source, dialect, inputs, view })}`;
+  // Browser-only facts, read so the server's HTML and the first render agree.
+  const origin = useSyncExternalStore(
+    noSubscribe,
+    () => window.location.origin,
+    () => "",
+  );
+  const canShare = useSyncExternalStore(
+    noSubscribe,
+    () => "share" in navigator,
+    () => false,
+  );
+  const link = origin ? `${origin}${sharePath({ name, source, dialect, inputs, view })}` : "";
 
   return (
     <>
@@ -83,7 +93,7 @@ export function ShareButton() {
           >
             Copy link
           </button>
-          {typeof navigator !== "undefined" && "share" in navigator && (
+          {canShare && (
             <button
               type="button"
               onClick={() =>

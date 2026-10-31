@@ -47,6 +47,11 @@ interface WorkspaceApi {
 
 const Ctx = createContext<WorkspaceApi | null>(null);
 
+/** True while saved work is still loading; false outside a workspace (lessons, embeds). */
+export function useWorkspaceLoading(): boolean {
+  return useContext(Ctx)?.status === "loading";
+}
+
 export function useWorkspace(): WorkspaceApi {
   const api = useContext(Ctx);
   if (!api) throw new Error("useWorkspace must be used inside <WorkspaceProvider>");
@@ -263,17 +268,13 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     },
   };
 
-  // Show the simulator once the learner's work has loaded, so nothing they do is overwritten by
-  // the load. IndexedDB answers in a few milliseconds.
   return (
     <Ctx.Provider value={api}>
-      {status === "loading" ? (
-        <p className="p-6 text-muted" role="status">
-          Opening your work…
-        </p>
-      ) : (
-        children
-      )}
+      {/* The simulator is drawn at once (and by the server), but locked until the learner's work
+          has loaded, so nothing they do is overwritten by the load. */}
+      <div inert={status === "loading"} aria-busy={status === "loading"} className="contents">
+        {children}
+      </div>
     </Ctx.Provider>
   );
 }

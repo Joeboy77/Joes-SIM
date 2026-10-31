@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { usePlayback } from "../usePlayback";
 import { VIEW_ORDER } from "../store";
 import { useSim } from "../SimProvider";
+import { useWorkspaceLoading } from "../workspace/Workspace";
 
 export const SHORTCUTS: readonly [string, string][] = [
   ["P or Ctrl+Enter", "Run or pause"],
@@ -31,10 +32,12 @@ export function Shortcuts() {
   const store = useSim();
   const { toggle } = usePlayback();
   const [open, setOpen] = useState(false);
+  const loading = useWorkspaceLoading();
   const dialog = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (loading) return;
       if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
         e.preventDefault();
         toggle();
@@ -63,7 +66,7 @@ export function Shortcuts() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [store, toggle]);
+  }, [store, toggle, loading]);
 
   useEffect(() => {
     const d = dialog.current;
