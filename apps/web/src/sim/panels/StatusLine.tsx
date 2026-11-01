@@ -56,7 +56,12 @@ export function StatusLine() {
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-surface-2 px-3 py-1.5 text-sm">
-      <p role="status" aria-live="polite" className={tone}>
+      {/* On phones the sentence gets two lines of its own, so a longer one never pushes the page down. */}
+      <p
+        role="status"
+        aria-live="polite"
+        className={`${tone} min-h-10 basis-full sm:min-h-0 sm:basis-auto`}
+      >
         {text}
       </p>
       <p className="text-muted">

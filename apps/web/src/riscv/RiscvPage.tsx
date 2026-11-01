@@ -47,6 +47,14 @@ export function RiscvPage() {
     () => true,
     () => false,
   );
-  if (!browser) return <p className="text-muted">Loading the RISC-V machine…</p>;
-  return <RiscvWorkbench initial={saved()} inputs="10" onSource={save} />;
+  // The server draws the starter program, so the page does not jump when it loads; the browser
+  // then swaps in the learner's own program, if they have one.
+  return (
+    <RiscvWorkbench
+      key={browser ? "saved" : "starter"}
+      initial={browser ? saved() : RISCV_STARTER}
+      inputs="10"
+      onSource={save}
+    />
+  );
 }

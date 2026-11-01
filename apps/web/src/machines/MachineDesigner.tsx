@@ -51,9 +51,12 @@ export function MachineDesigner() {
     () => true,
     () => false,
   );
-  if (!browser) return <p className="text-muted">Loading the machine designer…</p>;
-  const start = startingMachine();
-  return <Designer initial={start.def} fromLink={start.fromLink} />;
+  // The server draws the LMC preset, so the page does not jump when it loads; the browser then
+  // swaps in the machine from the link, or the one last edited here.
+  const start = browser ? startingMachine() : { def: LMC_DEFINITION, fromLink: false };
+  return (
+    <Designer key={browser ? "saved" : "preset"} initial={start.def} fromLink={start.fromLink} />
+  );
 }
 
 const input = "min-h-11 rounded-sm border border-border-strong bg-surface px-2 text-sm";
