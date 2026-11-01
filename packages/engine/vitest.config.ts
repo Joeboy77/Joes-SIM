@@ -2,6 +2,8 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
+    // Some tests run every reference program many times; CI machines are slower under coverage.
+    testTimeout: 30_000,
     include: ["src/**/*.test.ts"],
     coverage: {
       provider: "v8",

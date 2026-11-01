@@ -205,7 +205,8 @@ describe("trace tables", () => {
       }
     }
     expect(checked).toBeGreaterThan(100);
-  });
+    // Thousands of instructions across every program and dialect: slow under coverage on CI.
+  }, 60_000);
 
   it("records reads, writes, inputs, outputs, branches and arithmetic", () => {
     const { trace } = traced(source("max-of-two"), [3, 8], "classic");
