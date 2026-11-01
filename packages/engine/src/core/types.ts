@@ -1,11 +1,16 @@
 import type { DialectId } from "../dialects/types";
 import type { ExtendedState } from "../machines/extended/types";
+import type { MulticoreState } from "../machines/multicore/types";
 
 export const MEMORY_SIZE = 100;
 
-export type OutputItem =
+export type OutputItem = (
   | { readonly kind: "number"; readonly value: number }
-  | { readonly kind: "char"; readonly value: number; readonly char: string };
+  | { readonly kind: "char"; readonly value: number; readonly char: string }
+) & {
+  /** The core that output it, on the multicore machine. */
+  readonly core?: number;
+};
 
 export type MachineStatus = "ready" | "waiting-input" | "waiting-interrupt" | "halted" | "error";
 
@@ -66,4 +71,10 @@ export interface MachineState {
    * behaves exactly as before.
    */
   readonly ext?: ExtendedState;
+
+  /**
+   * The multicore machine's cores and scheduler. The registers above then mirror the core that
+   * ran last; memory and the trays are shared.
+   */
+  readonly multi?: MulticoreState;
 }

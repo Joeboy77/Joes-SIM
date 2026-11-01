@@ -10,7 +10,7 @@ import { decodeExt } from "../machines/extended/semantics";
 export type Disassembled =
   | {
       readonly kind: "instruction";
-      readonly mnemonic: Mnemonic | ExtMnemonic;
+      readonly mnemonic: Mnemonic | ExtMnemonic | "TAS";
       readonly text: string;
       readonly address?: number;
       /** 2 when the next mailbox is this instruction's address or port. */
@@ -20,7 +20,7 @@ export type Disassembled =
 
 export interface WordOptions {
   /** Read 4xx as the extended machine's instructions. */
-  readonly machine?: "classic" | "extended";
+  readonly machine?: "classic" | "extended" | "multicore";
   /** The next mailbox, for a two-mailbox instruction's address or port. */
   readonly next?: number;
 }
@@ -32,6 +32,18 @@ export function disassembleWord(
   options: WordOptions = {},
 ): Disassembled {
   const dialect = getDialect(dialectId);
+  if (options.machine === "multicore" && value === 460) {
+    const n = options.next;
+    if (n !== undefined && Number.isInteger(n) && n >= 0 && n <= 99) {
+      return {
+        kind: "instruction",
+        mnemonic: "TAS",
+        words: 2,
+        address: n,
+        text: `TAS ${String(n).padStart(2, "0")}`,
+      };
+    }
+  }
   const ext = options.machine === "extended" ? decodeExt(value) : null;
   const next = options.next;
   // A second mailbox that is not an address cannot be written as one, so it stays DAT.

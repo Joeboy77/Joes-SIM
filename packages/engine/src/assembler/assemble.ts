@@ -33,7 +33,10 @@ interface Token {
   readonly column: number;
 }
 
-type AsmMnemonic = Mnemonic | ExtMnemonic | "DAT";
+type AsmMnemonic = Mnemonic | ExtMnemonic | "TAS" | "DAT";
+
+/** TAS, the multicore machine's atomic test-and-set (docs/specs/multicore.md). */
+const TAS_CODE = 460;
 
 interface Pending {
   readonly line: number;
@@ -60,12 +63,13 @@ const COMMENT_MARKERS = ["//", ";", "#"];
 export interface AssembleOptions {
   readonly dialect?: DialectId;
   /** "extended" accepts the extended machine's instructions (docs/specs/extended.md). */
-  readonly machine?: "classic" | "extended";
+  readonly machine?: "classic" | "extended" | "multicore";
 }
 
 export function assemble(source: string, options: AssembleOptions = {}): AssembleResult {
   const dialect = getDialect(options.dialect ?? "classic");
   const extended = options.machine === "extended";
+  const multicore = options.machine === "multicore";
   const diagnostics: Diagnostic[] = [];
   const report = (
     severity: Diagnostic["severity"],
@@ -99,13 +103,13 @@ export function assemble(source: string, options: AssembleOptions = {}): Assembl
     const tokens = tokenize(stripComment(text));
     if (tokens.length === 0) return;
 
-    const parsed = parseStatement(tokens, dialect, extended, line, report);
+    const parsed = parseStatement(tokens, dialect, extended, multicore, line, report);
     if (!parsed) return;
     const { label, mnemonic, at } = parsed;
     const rest = joinIndexed(parsed.rest);
 
     const address = next;
-    const words = isTwoWord(mnemonic, rest[0]) && extended ? 2 : 1;
+    const words = isTwoWord(mnemonic, rest[0]) && (extended || multicore) ? 2 : 1;
     if (address + words > MEMORY_SIZE) {
       if (!tooLongReported) {
         report(
@@ -229,6 +233,7 @@ export function assemble(source: string, options: AssembleOptions = {}): Assembl
   const program: Program = {
     dialect: dialect.id,
     ...(extended ? { machine: "extended" as const } : {}),
+    ...(multicore ? { machine: "multicore" as const } : {}),
     memory,
     statements,
     labels: Object.fromEntries(labels),
@@ -269,11 +274,12 @@ const ALL_SPELLINGS = [
 ];
 const EXT_SET = new Set<string>(EXT_MNEMONICS);
 
-type Looked = AsmMnemonic | "unsupported" | "extended-only" | null;
+type Looked = AsmMnemonic | "unsupported" | "extended-only" | "multicore-only" | null;
 
-function lookup(word: string, dialect: Dialect, extended: boolean): Looked {
+function lookup(word: string, dialect: Dialect, extended: boolean, multicore = false): Looked {
   const upper = word.toUpperCase();
   if (upper === "DAT") return "DAT";
+  if (upper === "TAS") return multicore ? "TAS" : "multicore-only";
   const m = dialect.spellings[upper];
   if (m) return m;
   if (EXT_SET.has(upper)) return extended ? (upper as ExtMnemonic) : "extended-only";
@@ -283,6 +289,7 @@ function lookup(word: string, dialect: Dialect, extended: boolean): Looked {
 
 /** Instructions that take a second mailbox on the extended machine. */
 function isTwoWord(mnemonic: AsmMnemonic, operand: Token | undefined): boolean {
+  if (mnemonic === "TAS") return true;
   if (EXT_SET.has(mnemonic)) return extTakesOperand(mnemonic as ExtMnemonic);
   return (
     MODE_MNEMONICS.includes(mnemonic) && operand !== undefined && modeOf(operand.text) !== null
@@ -316,6 +323,17 @@ function joinIndexed(rest: Token[]): Token[] {
   return rest;
 }
 
+function reportMulticoreOnly(token: Token, line: number, report: Report) {
+  report(
+    "error",
+    "multicore-only",
+    line,
+    token,
+    "TAS is an instruction of the multicore machine.",
+    "TAS (test and set) is for locks shared between cores. Switch to the multicore machine to use it.",
+  );
+}
+
 function reportExtendedOnly(token: Token, line: number, report: Report) {
   report(
     "error",
@@ -336,16 +354,18 @@ function parseStatement(
   tokens: Token[],
   dialect: Dialect,
   extended: boolean,
+  multicore: boolean,
   line: number,
   report: Report,
 ): { label?: Token; mnemonic: AsmMnemonic; at: Token; rest: Token[] } | null {
   const first = tokens[0] as Token;
-  let firstKind = lookup(first.text, dialect, extended);
+  let firstKind = lookup(first.text, dialect, extended, multicore);
   // Classic programs may use the new names as labels ("get LDA table"): a word followed by an
-  // instruction is a label, so they keep working on either machine.
-  if (firstKind && EXT_SET.has(first.text.toUpperCase()) && tokens[1]) {
-    const next = lookup(tokens[1].text, dialect, extended);
-    if (next && next !== "extended-only" && next !== "unsupported") {
+  // instruction is a label, so they keep working on every machine.
+  const newName = EXT_SET.has(first.text.toUpperCase()) || first.text.toUpperCase() === "TAS";
+  if (firstKind && newName && tokens[1]) {
+    const next = lookup(tokens[1].text, dialect, extended, multicore);
+    if (next && next !== "extended-only" && next !== "unsupported" && next !== "multicore-only") {
       firstKind = null;
     }
   }
@@ -355,6 +375,10 @@ function parseStatement(
   }
   if (firstKind === "extended-only") {
     reportExtendedOnly(first, line, report);
+    return null;
+  }
+  if (firstKind === "multicore-only") {
+    reportMulticoreOnly(first, line, report);
     return null;
   }
   if (firstKind) return { mnemonic: firstKind, at: first, rest: tokens.slice(1) };
@@ -391,13 +415,17 @@ function parseStatement(
     return null;
   }
 
-  const secondKind = lookup(second.text, dialect, extended);
+  const secondKind = lookup(second.text, dialect, extended, multicore);
   if (secondKind === "unsupported") {
     reportUnsupported(second, dialect, line, report);
     return null;
   }
   if (secondKind === "extended-only") {
     reportExtendedOnly(second, line, report);
+    return null;
+  }
+  if (secondKind === "multicore-only") {
+    reportMulticoreOnly(second, line, report);
     return null;
   }
   if (!secondKind) {
@@ -489,6 +517,21 @@ function checkOperand(
     }
     const code = encodeExt(mnemonic as ModeMnemonic, mode);
     return { ...checkAddress(base, operandName(operand.text), operand, line, report), code, mode };
+  }
+
+  if (mnemonic === "TAS") {
+    if (!operand) {
+      report(
+        "error",
+        "missing-address",
+        line,
+        p.at,
+        "TAS needs an address.",
+        "TAS works on a lock mailbox. Give a mailbox number (00 to 99) or a label, for example 'TAS lock'.",
+      );
+      return { ...base, value: 0, code: TAS_CODE };
+    }
+    return { ...checkAddress(base, operand.text, operand, line, report), code: TAS_CODE };
   }
 
   if (EXT_SET.has(mnemonic)) {

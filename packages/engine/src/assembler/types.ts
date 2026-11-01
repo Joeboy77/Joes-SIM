@@ -17,7 +17,8 @@ export type DiagnosticCode =
   | "operand-ignored"
   | "extra-text"
   | "program-too-long"
-  | "extended-only";
+  | "extended-only"
+  | "multicore-only";
 
 export interface Fix {
   /** What the fix does, for a button or hint. */
@@ -46,7 +47,7 @@ export interface Statement {
   readonly line: number;
   readonly address: number;
   readonly label?: string;
-  readonly mnemonic: Mnemonic | ExtMnemonic | "DAT";
+  readonly mnemonic: Mnemonic | ExtMnemonic | "TAS" | "DAT";
   /** Indirect (`@a`) or indexed (`a,X`) addressing, on the extended machine. */
   readonly mode?: AddressMode;
   /** Mailboxes used: 2 when the address or port is in the next mailbox. */
@@ -66,8 +67,8 @@ export type MailboxKind = "code" | "operand" | "data" | "empty";
 
 export interface Program {
   readonly dialect: DialectId;
-  /** Present (and "extended") when assembled for the extended machine. */
-  readonly machine?: "extended";
+  /** Present when assembled for the extended or the multicore machine. */
+  readonly machine?: "extended" | "multicore";
   /** All 100 mailboxes, ready to load into the machine. */
   readonly memory: readonly number[];
   readonly statements: readonly Statement[];

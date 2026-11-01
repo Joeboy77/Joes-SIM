@@ -1,6 +1,8 @@
 import { DEFAULT_DIALECT, getDialect } from "../dialects/dialects";
 import type { DialectId } from "../dialects/types";
 import { createExtended } from "../machines/extended/devices";
+import { createMulticore } from "../machines/multicore/micro";
+import type { Schedule } from "../machines/multicore/types";
 import type { KeyPress } from "../machines/extended/types";
 import { inRange } from "./semantics";
 import { MEMORY_SIZE, type MachineState } from "./types";
@@ -16,12 +18,19 @@ export interface CreateStateOptions {
   readonly stackFloor?: number;
   /** Extended machine: key presses, each arriving once `cycle` instructions have completed. */
   readonly keys?: readonly KeyPress[];
+  /** Multicore machine: how many cores (2 to 4). */
+  readonly cores?: number;
+  /** Multicore machine: where each core starts. */
+  readonly starts?: readonly number[];
+  readonly schedule?: Schedule;
+  /** Multicore machine: manual choices already made, one core per step. */
+  readonly choices?: readonly number[];
 }
 
-export type MachineId = "classic" | "extended";
+export type MachineId = "classic" | "extended" | "multicore";
 
 export function machineOf(state: MachineState): MachineId {
-  return state.ext ? "extended" : "classic";
+  return state.ext ? "extended" : state.multi ? "multicore" : "classic";
 }
 
 /** A fresh machine with the program loaded and the program counter at 00. */
@@ -66,6 +75,18 @@ export function createState(options: CreateStateOptions = {}): MachineState {
           ext: createExtended(memory, {
             ...(options.stackFloor === undefined ? {} : { stackFloor: options.stackFloor }),
             ...(options.keys ? { keys: options.keys } : {}),
+          }),
+        }
+      : {}),
+    ...(options.machine === "multicore"
+      ? {
+          pc: options.starts?.[0] ?? 0,
+          currentAddress: options.starts?.[0] ?? 0,
+          multi: createMulticore({
+            ...(options.cores === undefined ? {} : { cores: options.cores }),
+            ...(options.starts ? { starts: options.starts } : {}),
+            ...(options.schedule ? { schedule: options.schedule } : {}),
+            ...(options.choices ? { choices: options.choices } : {}),
           }),
         }
       : {}),

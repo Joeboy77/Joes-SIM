@@ -27,7 +27,7 @@ export type ExtMnemonic =
   | "PUT";
 
 /** Any instruction either machine can run. INT names an interrupt entry in traces. */
-export type AnyMnemonic = Mnemonic | ExtMnemonic | "INT";
+export type AnyMnemonic = Mnemonic | ExtMnemonic | "INT" | "TAS";
 
 /**
  * How the accumulator handles results outside its range.

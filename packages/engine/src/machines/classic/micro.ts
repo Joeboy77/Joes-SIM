@@ -18,6 +18,7 @@ import {
 import { MEMORY_SIZE, type MachineState, type OutputItem } from "../../core/types";
 import type { AnyMnemonic } from "../../dialects/types";
 import { completeExt, executeExt, interruptPending, interruptStep } from "../extended/micro";
+import { stepMulticore } from "../multicore/micro";
 import {
   INTERRUPT_STAGE,
   decodeExt,
@@ -33,6 +34,7 @@ export interface MicroResult {
 export type Changes = { -readonly [K in keyof MachineState]?: MachineState[K] };
 
 export function stepMicro(state: MachineState): MicroResult {
+  if (state.multi) return stepMulticore(state);
   if (state.status !== "ready") {
     if (state.status === "waiting-input" && state.stage >= EXECUTE_START) {
       return { state, step: { phase: "execute", op: "input", events: [{ type: "input-needed" }] } };

@@ -167,7 +167,9 @@ export type EngineEvent =
     }
   | { readonly type: "key"; readonly key: number; readonly dropped: boolean }
   | { readonly type: "beep"; readonly note: number; readonly length: number }
-  | { readonly type: "wait"; readonly idle: boolean };
+  | { readonly type: "wait"; readonly idle: boolean }
+  // The multicore machine: which core ran this micro-step.
+  | { readonly type: "core"; readonly core: number };
 
 export interface MicroStep {
   readonly phase: Phase;

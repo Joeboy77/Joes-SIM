@@ -1,4 +1,5 @@
 import { FastCore } from "../machines/classic/fast";
+import { step } from "./step";
 import { stepMicro } from "../machines/classic/micro";
 import { conditionMet, type RunCondition } from "./conditions";
 import type { ExtendedState } from "../machines/extended/types";
@@ -56,6 +57,7 @@ export function run(initial: MachineState, options: RunOptions = {}): RunResult 
   const metCondition = (view: Parameters<typeof conditionMet>[1]) =>
     conditions.findIndex((c) => conditionMet(c, view));
 
+  if (initial.multi) return runMulticore(initial, options);
   let state = initial;
   let executed = 0;
   // Finish an instruction that is part-way through, one micro-step at a time.
@@ -258,4 +260,41 @@ function sameExt(a: ExtendedState | undefined, b: ExtendedState | undefined): bo
     sameMemory(d.segments, e.segments) &&
     sameMemory(d.pixels, e.pixels)
   );
+}
+
+/**
+ * The multicore machine runs instruction by instruction through the micro-step machine, since the
+ * scheduler decides each step. Breakpoints stop before a core runs a marked mailbox. Loop
+ * detection is left to the step budget: spinning on a lock is a loop another core can end.
+ */
+function runMulticore(initial: MachineState, options: RunOptions): RunResult {
+  const budget = options.maxSteps ?? DEFAULT_STEP_BUDGET;
+  const breakpoints = new Set(options.breakpoints ?? []);
+  const conditions = options.conditions ?? [];
+  let state = initial;
+  let executed = 0;
+  while (state.stage !== 0 && state.status === "ready") state = stepMicro(state).state;
+  for (;;) {
+    const reason = stopReason(state);
+    if (reason) return { state, reason };
+    if (executed >= budget) return { state, reason: "budget" };
+    const before = state;
+    const s = step(state, { granularity: "instruction" }).state;
+    if (s === before) return { state, reason: "waiting-input" };
+    state = s;
+    executed++;
+    if (conditions.length > 0) {
+      const met = conditions.findIndex((c) => conditionMet(c, state));
+      if (met >= 0) return { state, reason: "condition", condition: met };
+    }
+    const m = state.multi;
+    if (
+      breakpoints.size &&
+      m &&
+      state.status === "ready" &&
+      m.cores.some((c) => c.stage === 0 && c.status === "ready" && breakpoints.has(c.pc))
+    ) {
+      return { state, reason: "breakpoint" };
+    }
+  }
 }

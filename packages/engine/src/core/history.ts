@@ -23,6 +23,7 @@ const SCALARS = [
   "cycles",
   "microSteps",
   "ext",
+  "multi",
 ] as const;
 type ScalarKey = (typeof SCALARS)[number];
 

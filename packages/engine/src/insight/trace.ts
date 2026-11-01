@@ -48,6 +48,8 @@ export interface TraceRow {
   readonly words?: 2;
   /** Indirect or indexed addressing (extended machine). */
   readonly mode?: "indirect" | "indexed";
+  /** The core that ran it (multicore machine). */
+  readonly core?: number;
 }
 
 export interface TraceOptions {
@@ -101,6 +103,14 @@ export class Trace {
   setInputs(inputs: readonly number[]): void {
     this.head = { ...this.head, inputs };
     this.keyframes = this.keyframes.map((k) => ({ ...k, inputs }));
+  }
+
+  /** Manual core choices (multicore machine): replays must make the same ones. */
+  setChoices(choices: readonly number[]): void {
+    const with_ = (s: MachineState): MachineState =>
+      s.multi && s.multi.choices !== choices ? { ...s, multi: { ...s.multi, choices } } : s;
+    this.head = with_(this.head);
+    this.keyframes = this.keyframes.map(with_);
   }
 
   /** Key presses only ever grow, like inputs: replays need keys typed during the run. */
@@ -157,6 +167,7 @@ export class Trace {
       instruction: complete.instruction,
       mnemonic: complete.mnemonic,
       ...(complete.mode ? { mode: complete.mode } : {}),
+      ...(after.multi ? { core: after.multi.last ?? 0 } : {}),
       acc: after.acc,
       negative: after.negative,
       pc: after.pc,
