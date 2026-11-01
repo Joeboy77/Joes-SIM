@@ -1,7 +1,7 @@
 import { assemble } from "@joes-sim/engine";
 import { describe, expect, it } from "vitest";
 import { CHALLENGES } from "./library";
-import { meetsTargets, runChallenge, TEST_STEP_LIMIT } from "./run";
+import { hasLeaderboard, meetsTargets, runChallenge, TEST_STEP_LIMIT } from "./run";
 import { CONCEPTS, type Challenge } from "./types";
 
 describe("the challenge library", () => {
@@ -241,5 +241,20 @@ describe("edge cases of the runner", () => {
     const cache = byId("pick-a-cache");
     const twice = { ...cache, tests: [cache.tests[0], cache.tests[0]] as Challenge["tests"] };
     expect(runChallenge(cache.solution, twice).goal?.explanation).toMatch(/on the hardest test/);
+  });
+});
+
+describe("leaderboards", () => {
+  it("rank every challenge except those whose program is fixed", () => {
+    const without = CHALLENGES.filter((c) => !hasLeaderboard(c)).map((c) => c.id);
+    expect(without).toContain("pick-a-cache");
+    expect(without).toContain("lost-update");
+    expect(
+      without.every((id) => {
+        const c = CHALLENGES.find((x) => x.id === id);
+        return Boolean(c?.cache ?? c?.multicore?.chooseOrder);
+      }),
+    ).toBe(true);
+    expect(hasLeaderboard(CHALLENGES[0] as Challenge)).toBe(true);
   });
 });

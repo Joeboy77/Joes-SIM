@@ -286,3 +286,11 @@ function startState(
       : {}),
   });
 }
+
+/**
+ * Whether a challenge can have a leaderboard. When the program is fixed (choose a cache, or the
+ * order of the cores), every solver gets the same scores, so there is nothing to rank.
+ */
+export function hasLeaderboard(challenge: Challenge): boolean {
+  return !challenge.cache && !challenge.multicore?.chooseOrder;
+}

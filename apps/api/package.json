@@ -1,0 +1,25 @@
+{
+  "name": "@joes-sim/api",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Optional community backend (Phase 11): leaderboards, the gallery and short links, on Cloudflare Workers and D1.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler d1 migrations apply joes-sim --local && wrangler dev",
+    "deploy": "wrangler d1 migrations apply joes-sim --remote && wrangler deploy",
+    "lint": "eslint src",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@joes-sim/content": "workspace:*",
+    "@joes-sim/engine": "workspace:*",
+    "lz-string": "^1.5.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261101.1",
+    "wrangler": "^4.156.0"
+  }
+}
