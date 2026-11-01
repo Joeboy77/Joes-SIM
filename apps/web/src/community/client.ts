@@ -38,7 +38,7 @@ async function call<T>(
     });
   } catch {
     throw new CommunityError(
-      typeof navigator !== "undefined" && !navigator.onLine
+      typeof navigator !== "undefined" && navigator.onLine === false
         ? "You are offline. This needs an internet connection; everything else still works."
         : "The community service could not be reached. Please try again later.",
       0,
