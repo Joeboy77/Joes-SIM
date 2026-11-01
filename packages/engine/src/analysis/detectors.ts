@@ -8,6 +8,7 @@ import type { Program } from "../assembler/types";
 import { getDialect } from "../dialects/dialects";
 import { decode } from "../core/semantics";
 import { MEMORY_SIZE } from "../core/types";
+import { decodeExt, type ExtDecoded } from "../machines/extended/semantics";
 import { buildCfg, successors, type ControlFlowGraph } from "./cfg";
 
 export type FindingCode =
@@ -18,7 +19,12 @@ export type FindingCode =
   | "unreachable-code"
   | "cannot-halt"
   | "not-enough-inputs"
-  | "inputs-unused";
+  | "inputs-unused"
+  // The extended machine.
+  | "ret-outside-subroutine"
+  | "call-without-ret"
+  | "ei-without-vec"
+  | "push-without-pop";
 
 export interface Finding {
   readonly code: FindingCode;
@@ -41,16 +47,24 @@ const pad = (a: number) => String(a).padStart(2, "0");
 
 export function analyse(program: Program, options: AnalyseOptions = {}): Finding[] {
   if (program.size === 0) return [];
-  const cfg = buildCfg(program.memory, program.dialect);
+  const extended = program.machine === "extended";
+  const cfg = buildCfg(program.memory, program.dialect, extended);
   const dialect = getDialect(program.dialect);
-  const decoded = program.memory.map((v) => decode(v, dialect));
+  const ext = program.memory.map((v) => (extended ? decodeExt(v) : null));
+  // On the extended machine 4xx words are not classic instructions.
+  const decoded = program.memory.map((v, a) => (ext[a] ? null : decode(v, dialect)));
   const reachableCode = range().filter((a) => cfg.reachable[a]);
+  const operandOf = (a: number) => program.memory[(a + 1) % MEMORY_SIZE] ?? 0;
   const storesTo = new Set(
     reachableCode.flatMap((a) => {
       const d = decoded[a];
-      return d?.mnemonic === "STA" ? [d.address] : [];
+      if (d?.mnemonic === "STA") return [d.address];
+      return ext[a]?.mnemonic === "STX" ? [operandOf(a)] : [];
     }),
   );
+  // Stores through a pointer or an index can reach any mailbox.
+  const unknownStores = reachableCode.some((a) => ext[a]?.mnemonic === "STA");
+  const usesInterrupts = reachableCode.some((a) => ext[a]?.mnemonic === "EI");
   const selfModifying = [...storesTo].some((a) => program.kinds[a] === "code" || cfg.reachable[a]);
   const lineOf = (a: number) => program.addressToLine[a] ?? undefined;
   const at = (a: number) => {
@@ -61,7 +75,8 @@ export function analyse(program: Program, options: AnalyseOptions = {}): Finding
 
   // No HLT anywhere in the source.
   const hasHalt = program.statements.some((s) => s.mnemonic === "HLT");
-  if (!hasHalt && program.size > 0) {
+  // A program driven by interrupts may run until it is stopped, so it needs no HLT.
+  if (!hasHalt && program.size > 0 && !usesInterrupts) {
     findings.push({
       code: "no-halt",
       severity: "warning",
@@ -118,9 +133,16 @@ export function analyse(program: Program, options: AnalyseOptions = {}): Finding
   // Reading a mailbox that was never given a value.
   const readsReported = new Set<number>();
   for (const a of reachableCode) {
+    if (unknownStores) break;
     const d = decoded[a];
-    if (!d || !(d.mnemonic === "LDA" || d.mnemonic === "ADD" || d.mnemonic === "SUB")) continue;
-    const target = d.address;
+    const read =
+      d && (d.mnemonic === "LDA" || d.mnemonic === "ADD" || d.mnemonic === "SUB")
+        ? { mnemonic: d.mnemonic, address: d.address }
+        : ext[a]?.mnemonic === "LDX"
+          ? { mnemonic: "LDX", address: operandOf(a) }
+          : null;
+    if (!read) continue;
+    const target = read.address;
     if (readsReported.has(target) || storesTo.has(target)) continue;
     const kind = program.kinds[target];
     const statement = program.statements.find((s) => s.address === target);
@@ -133,8 +155,8 @@ export function analyse(program: Program, options: AnalyseOptions = {}): Finding
       ...at(a),
       message:
         kind === "empty"
-          ? `${d.mnemonic} on line ${lineOf(a)} reads mailbox ${pad(target)}, which is never given a value.`
-          : `${d.mnemonic} on line ${lineOf(a)} reads a DAT that has no starting value and is never stored to.`,
+          ? `${read.mnemonic} on line ${lineOf(a)} reads mailbox ${pad(target)}, which is never given a value.`
+          : `${read.mnemonic} on line ${lineOf(a)} reads a DAT that has no starting value and is never stored to.`,
       explanation: `Mailbox ${pad(target)} will just hold 000. If you meant it to start with a value, write it after DAT (for example DAT 1), or STA into it first.`,
       hints: [
         `Where does the value in mailbox ${pad(target)} come from?`,
@@ -167,16 +189,125 @@ export function analyse(program: Program, options: AnalyseOptions = {}): Finding
   }
 
   // Parts of the program from which no path leads to a stop.
-  if (!selfModifying) findings.push(...cannotHalt(program.memory, program.dialect, cfg, at));
+  if (!selfModifying && !usesInterrupts) {
+    findings.push(...cannotHalt(program.memory, program.dialect, extended, cfg, at));
+  }
 
   if (options.inputs) findings.push(...inputChecks(program, cfg, decoded, options.inputs.length));
 
+  if (extended) findings.push(...extendedChecks(program, ext, reachableCode, at));
+
+  return findings;
+}
+
+/** Mistakes with subroutines, the stack and interrupts (docs/specs/extended.md). */
+function extendedChecks(
+  program: Program,
+  ext: readonly (ExtDecoded | null)[],
+  reachableCode: readonly number[],
+  at: (a: number) => { address: number; line?: number },
+): Finding[] {
+  const findings: Finding[] = [];
+  const memory = program.memory;
+  const lineOf = (a: number) => program.addressToLine[a] ?? undefined;
+  const is = (a: number, m: string) => ext[a]?.mnemonic === m && !ext[a]?.mode;
+  const target = (a: number) => memory[(a + 1) % MEMORY_SIZE] ?? 0;
+
+  // Addresses reached from `start` without entering subroutines (CALL carries on after itself).
+  const walk = (start: number): Set<number> => {
+    const seen = new Set<number>();
+    const stack = [start];
+    while (stack.length) {
+      const a = stack.pop() as number;
+      if (seen.has(a)) continue;
+      seen.add(a);
+      for (const s of successors(memory, a, program.dialect, true)) {
+        if (s.kind !== "call" && s.kind !== "interrupt") stack.push(s.to);
+      }
+    }
+    return seen;
+  };
+
+  const main = walk(0);
+  const strayRet = [...main].sort((x, y) => x - y).find((a) => is(a, "RET"));
+  if (strayRet !== undefined) {
+    findings.push({
+      code: "ret-outside-subroutine",
+      severity: "warning",
+      ...at(strayRet),
+      message: `The main program reaches RET on line ${lineOf(strayRet)} without a CALL.`,
+      explanation:
+        "RET takes a return address off the stack. Reached without a CALL, there is no return address, so the machine stops with a stack underflow, or jumps to whatever was pushed last.",
+      hints: [
+        "How does the Little Man get to this RET?",
+        "The path from the start reaches RET without going through CALL.",
+        "Reach the subroutine with CALL, and put HLT (or a branch) before it so the main program does not run into it.",
+      ],
+    });
+  }
+
+  const reported = new Set<number>();
+  for (const a of reachableCode) {
+    if (!is(a, "CALL")) continue;
+    const t = target(a);
+    if (reported.has(t)) continue;
+    reported.add(t);
+    const body = walk(t);
+    if ([...body].some((b) => is(b, "RET"))) continue;
+    findings.push({
+      code: "call-without-ret",
+      severity: "warning",
+      ...at(a),
+      message: `The subroutine called on line ${lineOf(a)} never reaches RET.`,
+      explanation: `CALL saves a return address on the stack and goes to mailbox ${pad(t)}. Without RET the program never comes back, and the return address is left on the stack.`,
+      hints: [
+        "How does this subroutine get back to where it was called from?",
+        `No path from mailbox ${pad(t)} reaches RET.`,
+        "End the subroutine with RET.",
+      ],
+    });
+  }
+
+  const ei = reachableCode.find((a) => is(a, "EI"));
+  if (ei !== undefined && !reachableCode.some((a) => is(a, "VEC"))) {
+    findings.push({
+      code: "ei-without-vec",
+      severity: "warning",
+      ...at(ei),
+      message: `Interrupts are turned on (line ${lineOf(ei)}) but VEC never says where the handler is.`,
+      explanation:
+        "When a device interrupts, the machine runs the handler at the interrupt vector. Without VEC the vector is 00, so an interrupt restarts the program from the top.",
+      hints: [
+        "Where should the machine go when the timer or keyboard interrupts?",
+        "VEC sets the address of the interrupt handler.",
+        "Add VEC with the handler's label before EI.",
+      ],
+    });
+  }
+
+  const push = reachableCode.find((a) => is(a, "PUSH"));
+  if (push !== undefined && !reachableCode.some((a) => is(a, "POP"))) {
+    findings.push({
+      code: "push-without-pop",
+      severity: "info",
+      ...at(push),
+      message: `PUSH on line ${lineOf(push)} puts values on the stack, but nothing takes them off with POP.`,
+      explanation:
+        "Values left on the stack fill it up, and a RET after a PUSH returns to the pushed value instead of the caller.",
+      hints: [
+        "What happens to the values you push?",
+        "Every PUSH usually needs a matching POP.",
+        "Add POP where you need the value back, before any RET.",
+      ],
+    });
+  }
   return findings;
 }
 
 function cannotHalt(
   memory: readonly number[],
   dialect: Program["dialect"],
+  extended: boolean,
   cfg: ControlFlowGraph,
   at: (a: number) => { address: number; line?: number },
 ): Finding[] {
@@ -186,7 +317,7 @@ function cannotHalt(
   const stops: number[] = [];
   for (let a = 0; a < MEMORY_SIZE; a++) {
     if (!cfg.reachable[a]) continue;
-    const succ = successors(memory, a, dialect);
+    const succ = successors(memory, a, dialect, extended);
     if (succ.length === 0) stops.push(a);
     succ.forEach((s) => (preds[s.to] as number[]).push(a));
   }
@@ -252,7 +383,7 @@ function inputChecks(
     const known = memo.get(a);
     if (known) return known;
     const here = decoded[a]?.mnemonic === "INP" ? 1 : 0;
-    const succ = successors(program.memory, a, program.dialect);
+    const succ = successors(program.memory, a, program.dialect, program.machine === "extended");
     let result: [number, number] = [here, here];
     if (succ.length) {
       const sub = succ.map((s) => count(s.to));

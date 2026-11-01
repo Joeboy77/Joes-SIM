@@ -6,9 +6,15 @@ import { getDialect } from "../dialects/dialects";
 import type { DialectId } from "../dialects/types";
 import { decode } from "../core/semantics";
 import { MEMORY_SIZE } from "../core/types";
+import { decodeExt } from "../machines/extended/semantics";
 
-export type EdgeKind = "fallthrough" | "taken" | "not-taken" | "jump";
-export type BlockExit = "halt" | "invalid" | "jump" | "branch" | "fallthrough";
+/**
+ * "call" goes into a subroutine (CALL also continues after it, once the subroutine returns);
+ * "interrupt" leads to a handler set with VEC, which can run between any two instructions.
+ */
+export type EdgeKind = "fallthrough" | "taken" | "not-taken" | "jump" | "call" | "interrupt";
+export type BlockExit =
+  "halt" | "invalid" | "jump" | "branch" | "fallthrough" | "call" | "vector" | "return";
 
 export interface CfgEdge {
   readonly from: number;
@@ -52,9 +58,32 @@ export function successors(
   memory: readonly number[],
   address: number,
   dialect: DialectId,
+  extended = false,
 ): Successor[] {
-  const d = decode(memory[address] ?? 0, getDialect(dialect));
+  const word = memory[address] ?? 0;
   const next = (address + 1) % MEMORY_SIZE;
+  const ext = extended ? decodeExt(word) : null;
+  if (ext) {
+    const after = (address + ext.words) % MEMORY_SIZE;
+    const target = memory[next] ?? 0;
+    const valid = target >= 0 && target < MEMORY_SIZE;
+    if (ext.mnemonic === "RET" || ext.mnemonic === "RTI") return [];
+    if (ext.mnemonic === "CALL" && valid) {
+      return [
+        { to: target, kind: "call" },
+        { to: after, kind: "fallthrough" },
+      ];
+    }
+    if (ext.mnemonic === "VEC" && valid) {
+      return [
+        { to: after, kind: "fallthrough" },
+        { to: target, kind: "interrupt" },
+      ];
+    }
+    return [{ to: after, kind: "fallthrough" }];
+  }
+  if (extended && Math.floor(word / 100) === 4) return [];
+  const d = decode(word, getDialect(dialect));
   if (!d || d.mnemonic === "HLT") return [];
   if (d.mnemonic === "BRA") return [{ to: d.address, kind: "jump" }];
   if (d.mnemonic === "BRZ" || d.mnemonic === "BRP") {
@@ -66,7 +95,17 @@ export function successors(
   return [{ to: next, kind: "fallthrough" }];
 }
 
-export function buildCfg(memory: readonly number[], dialect: DialectId): ControlFlowGraph {
+/** Whether the instruction at `address` ends a subroutine or interrupt handler. */
+function returns(memory: readonly number[], address: number, extended: boolean): boolean {
+  const m = extended ? decodeExt(memory[address] ?? 0)?.mnemonic : undefined;
+  return m === "RET" || m === "RTI";
+}
+
+export function buildCfg(
+  memory: readonly number[],
+  dialect: DialectId,
+  extended = false,
+): ControlFlowGraph {
   const reachable = new Array<boolean>(MEMORY_SIZE).fill(false);
   const leaders = new Set<number>([0]);
   const stack = [0];
@@ -74,7 +113,7 @@ export function buildCfg(memory: readonly number[], dialect: DialectId): Control
     const a = stack.pop() as number;
     if (reachable[a]) continue;
     reachable[a] = true;
-    const succ = successors(memory, a, dialect);
+    const succ = successors(memory, a, dialect, extended);
     if (succ.length !== 1 || succ[0]?.kind === "jump") succ.forEach((s) => leaders.add(s.to));
     succ.forEach((s) => stack.push(s.to));
   }
@@ -90,13 +129,21 @@ export function buildCfg(memory: readonly number[], dialect: DialectId): Control
     while (true) {
       addresses.push(a);
       blockOf[a] = id;
-      const succ = successors(memory, a, dialect);
+      const succ = successors(memory, a, dialect, extended);
       if (succ.length === 0) {
-        exit = decode(memory[a] ?? 0, getDialect(dialect)) ? "halt" : "invalid";
+        exit = returns(memory, a, extended)
+          ? "return"
+          : decode(memory[a] ?? 0, getDialect(dialect))
+            ? "halt"
+            : "invalid";
         break;
       }
       if (succ.length === 2) {
-        exit = "branch";
+        exit = succ.some((s) => s.kind === "call")
+          ? "call"
+          : succ.some((s) => s.kind === "interrupt")
+            ? "vector"
+            : "branch";
         break;
       }
       const only = succ[0] as Successor;
@@ -113,7 +160,7 @@ export function buildCfg(memory: readonly number[], dialect: DialectId): Control
   const edges: CfgEdge[] = [];
   for (const block of blocks) {
     const last = block.addresses[block.addresses.length - 1] as number;
-    for (const s of successors(memory, last, dialect)) {
+    for (const s of successors(memory, last, dialect, extended)) {
       const to = blockOf[s.to];
       if (to !== null && to !== undefined) edges.push({ from: block.id, to, kind: s.kind });
     }

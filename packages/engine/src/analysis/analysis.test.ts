@@ -8,8 +8,10 @@ import { buildCfg } from "./cfg";
 import { analyse, type FindingCode } from "./detectors";
 import { measure, measureRun } from "./metrics";
 
+const EXTENDED = /\b(PUSH|POP|CALL|RET|EI|VEC|WAIT|RTI)\b/;
 const program = (source: string): Program => {
-  const r = assemble(source, { dialect: "higginson" });
+  const machine = EXTENDED.test(source) ? "extended" : "classic";
+  const r = assemble(source, { dialect: "higginson", machine });
   if (!r.program) throw new Error(JSON.stringify(r.diagnostics));
   return r.program;
 };
@@ -73,6 +75,25 @@ const CASES: Record<
     clean: "        INP\n        INP\n        HLT",
     inputs: [[1, 2, 3], [4], [1, 2]],
   },
+  "ret-outside-subroutine": {
+    triggers: ["        INP\n        RET", "        CALL s\ns       OUT\n        RET"],
+    clean: "        CALL s\n        HLT\ns       OUT\n        RET",
+  },
+  "call-without-ret": {
+    triggers: [
+      "        CALL s\n        HLT\ns       OUT\n        HLT",
+      "        CALL s\n        HLT\ns       BRA s",
+    ],
+    clean: "        CALL s\n        HLT\ns       OUT\n        RET",
+  },
+  "ei-without-vec": {
+    triggers: ["        EI\n        HLT", "        EI\nl       WAIT\n        BRA l"],
+    clean: "        VEC h\n        EI\n        HLT\nh       RTI",
+  },
+  "push-without-pop": {
+    triggers: ["        PUSH\n        HLT", "        INP\n        PUSH\n        PUSH\n        HLT"],
+    clean: "        PUSH\n        POP\n        HLT",
+  },
 };
 
 describe("mistake detectors", () => {
@@ -125,6 +146,18 @@ describe("mistake detectors", () => {
 
   it("skips input counts when loops decide them", () => {
     expect(found("loop    INP\n        BRZ end\n        BRA loop\nend     HLT", [])).toEqual([]);
+  });
+
+  it("expects no HLT and no way out in a program driven by interrupts", () => {
+    const codes = found("        VEC h\n        EI\nidle    WAIT\n        BRA idle\nh       RTI");
+    expect(codes).toEqual([]);
+  });
+
+  it("does not run an instruction's address as code", () => {
+    const p = program("        CALL s\n        HLT\ns       RET");
+    const cfg = buildCfg(p.memory, p.dialect, true);
+    expect(cfg.reachable.slice(0, 4)).toEqual([true, false, true, true]);
+    expect(cfg.blocks[0]?.exit).toBe("call");
   });
 
   it("reports nothing for an empty program", () => {
