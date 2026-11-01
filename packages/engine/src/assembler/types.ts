@@ -1,4 +1,5 @@
-import type { DialectId, Mnemonic } from "../dialects/types";
+import type { DialectId, ExtMnemonic, Mnemonic } from "../dialects/types";
+import type { AddressMode } from "../machines/extended/semantics";
 
 export type Severity = "error" | "warning";
 
@@ -15,7 +16,8 @@ export type DiagnosticCode =
   | "invalid-operand"
   | "operand-ignored"
   | "extra-text"
-  | "program-too-long";
+  | "program-too-long"
+  | "extended-only";
 
 export interface Fix {
   /** What the fix does, for a button or hint. */
@@ -44,19 +46,28 @@ export interface Statement {
   readonly line: number;
   readonly address: number;
   readonly label?: string;
-  readonly mnemonic: Mnemonic | "DAT";
+  readonly mnemonic: Mnemonic | ExtMnemonic | "DAT";
+  /** Indirect (`@a`) or indexed (`a,X`) addressing, on the extended machine. */
+  readonly mode?: AddressMode;
+  /** Mailboxes used: 2 when the address or port is in the next mailbox. */
+  readonly words?: 2;
   /** The operand as written, if any. */
   readonly operandText?: string;
   /** Set when the operand is a label. */
   readonly operandLabel?: string;
   /** The value placed in the mailbox. */
   readonly value: number;
+  /** For a two-mailbox instruction, the value placed in the second mailbox. */
+  readonly operandValue?: number;
 }
 
-export type MailboxKind = "code" | "data" | "empty";
+/** "operand" is the second mailbox of a two-mailbox instruction (extended machine). */
+export type MailboxKind = "code" | "operand" | "data" | "empty";
 
 export interface Program {
   readonly dialect: DialectId;
+  /** Present (and "extended") when assembled for the extended machine. */
+  readonly machine?: "extended";
   /** All 100 mailboxes, ready to load into the machine. */
   readonly memory: readonly number[];
   readonly statements: readonly Statement[];
@@ -67,7 +78,7 @@ export interface Program {
   readonly lineToAddress: readonly (number | null)[];
   /** How the source declares each mailbox: an instruction, a DAT, or nothing. */
   readonly kinds: readonly MailboxKind[];
-  /** Mailboxes the program fills (instructions plus DATs). */
+  /** Mailboxes the program fills (instructions, their operands and DATs). */
   readonly size: number;
 }
 
