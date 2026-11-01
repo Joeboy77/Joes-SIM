@@ -1,10 +1,12 @@
 import type { MDXComponents } from "mdx/types";
 import { LessonSim } from "@/lessons/LessonSim";
+import { RiscvSim } from "@/lessons/RiscvSim";
 import { Highlight, Note, Predict } from "@/lessons/parts";
 
 /** Components every lesson can use, and plain elements styled for reading. */
 const components: MDXComponents = {
   LessonSim,
+  RiscvSim,
   Predict,
   Highlight,
   Note,

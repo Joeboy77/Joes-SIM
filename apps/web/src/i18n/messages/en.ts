@@ -9,6 +9,8 @@ export const en = {
   "nav.learn": "Learn",
   "nav.challenges": "Challenges",
   "nav.compiler": "Compiler",
+  "nav.riscv": "RISC-V",
+  "nav.machines": "Machines",
   "nav.packs": "Packs",
   "nav.progress": "Progress",
   "footer.site": "Site",

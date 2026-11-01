@@ -18,4 +18,6 @@ export const LESSON_CONTENT: Record<string, () => Promise<{ default: ComponentTy
   pipelining: () => import("./pipelining.mdx"),
   caches: () => import("./caches.mdx"),
   "races-and-locks": () => import("./races-and-locks.mdx"),
+  "lmc-to-riscv": () => import("./lmc-to-riscv.mdx"),
+  "riscv-memory-and-functions": () => import("./riscv-memory-and-functions.mdx"),
 };

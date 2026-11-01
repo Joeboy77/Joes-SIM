@@ -8,6 +8,8 @@ export const PUBLIC_PAGES: readonly string[] = [
   "/learn",
   "/challenges",
   "/compiler",
+  "/riscv",
+  "/machines",
   "/packs",
   "/reference",
   "/docs",

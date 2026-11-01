@@ -1,0 +1,98 @@
+In LMC, an array is a row of mailboxes, and reaching entry _i_ needs indexed addressing (on the
+extended machine) or self-modifying code. In RISC-V, a register can hold an **address**, and loads
+and stores add an offset to it.
+
+## Adding up an array
+
+On the extended LMC, `ADD table,X` adds the entry at table + X:
+
+<LessonSim
+  title="LMC (extended): sum a table"
+  machine="extended"
+  program={`
+loop    LDA total
+        ADD table,X
+        STA total
+        INX
+        STX i
+        LDA i
+        SUB size
+        BRZ done
+        BRA loop
+done    LDA total
+        OUT
+        HLT
+total   DAT 0
+i       DAT 0
+size    DAT 4
+table   DAT 3
+        DAT 1
+        DAT 4
+        DAT 1
+`}
+/>
+
+In RISC-V, `la` puts the array's address in a register, `lw t4, 0(t0)` loads the **word** at that
+address, and adding 4 moves to the next word, because each word is 4 bytes:
+
+<RiscvSim
+  title="RISC-V: sum an array"
+  program={`
+.data
+arr:    .word 3, 1, 4, 1
+.text
+        la   t0, arr        # t0 = the address of arr
+        li   t1, 4          # entries left
+        li   t3, 0          # total
+loop:   beqz t1, done
+        lw   t4, 0(t0)      # t4 = the word at t0
+        add  t3, t3, t4
+        addi t0, t0, 4      # the next word is 4 bytes on
+        addi t1, t1, -1
+        j    loop
+done:   mv   a0, t3
+        li   a7, 1
+        ecall
+        li   a7, 10
+        ecall
+`}
+/>
+
+<Predict
+  question="arr starts at 0x10010000. What address does lw read the third time round?"
+  choices={["0x10010002", "0x10010008", "0x10010003"]}
+  answer="0x10010008"
+  explain="Each time round t0 goes up by 4, the size of a word: 0x10010000, 0x10010004, then 0x10010008."
+/>
+
+## Functions
+
+The extended LMC has `CALL` and `RET`, which keep the return address on the stack. RISC-V's `jal ra,
+f` puts the return address in the register **ra** instead, and `ret` jumps back to it:
+
+<RiscvSim
+  title="RISC-V: a function that doubles"
+  inputs="21"
+  program={`
+.text
+main:   li   a7, 5
+        ecall
+        jal  ra, double     # call: ra = the address of the next instruction
+        li   a7, 1
+        ecall
+        li   a7, 10
+        ecall
+double: add  a0, a0, a0     # the argument and the result are both in a0
+        ret                 # jump back to ra
+`}
+/>
+
+<Note>
+  A function that calls another must save **ra** first, since the second call would overwrite it. It
+  stores ra on the stack with `sw ra, 0(sp)` and loads it back with `lw` before `ret`: the same job
+  LMC's `CALL` does for you by pushing.
+</Note>
+
+The registers have conventions: arguments and results go in **a0 to a7**, temporary values in
+**t0 to t6**, and values a function must keep in **s0 to s11**. Following them is what lets
+functions written by different people work together.

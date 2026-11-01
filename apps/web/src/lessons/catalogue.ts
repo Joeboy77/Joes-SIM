@@ -167,6 +167,24 @@ export const LESSONS: readonly LessonInfo[] = [
     dialect: "classic",
     machine: "multicore",
   },
+  {
+    slug: "lmc-to-riscv",
+    title: "From LMC to RISC-V",
+    summary: "The same programs in the Little Man Computer and in a real instruction set.",
+    minutes: 15,
+    concepts: ["instruction sets", "registers", "RISC-V"],
+    prerequisites: ["loops"],
+    dialect: "classic",
+  },
+  {
+    slug: "riscv-memory-and-functions",
+    title: "RISC-V: memory and functions",
+    summary: "Arrays with lw and sw, and calls with jal and ret, beside their LMC versions.",
+    minutes: 15,
+    concepts: ["memory", "subroutines", "RISC-V"],
+    prerequisites: ["lmc-to-riscv", "stack-and-subroutines"],
+    dialect: "classic",
+  },
 ];
 
 export const lessonBySlug = (slug: string) => LESSONS.find((l) => l.slug === slug);

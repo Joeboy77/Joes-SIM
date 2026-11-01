@@ -1,0 +1,113 @@
+The Little Man Computer has everything a computer needs, but no real processor works quite like
+it. **RISC-V** is a real, open instruction set used in teaching and in industry. This lesson puts
+the same programs side by side so you can carry what you know across. Programs you write here
+also run in **RARS**, the RISC-V simulator many courses use.
+
+## What changes
+
+| Little Man Computer               | RISC-V (RV32I)                                            |
+| --------------------------------- | --------------------------------------------------------- |
+| One accumulator                   | 32 registers, x0 to x31 (t0, a0, sp…); x0 is always 0     |
+| 100 mailboxes of 3 decimal digits | Memory of bytes, addresses of 32 bits                     |
+| Every instruction uses memory     | Arithmetic works on registers only                        |
+| `INP`, `OUT`                      | `ecall` asks the system: a7 says what, a0 holds the value |
+| `BRZ`, `BRP` test the accumulator | `beq`, `blt`, `bge`… compare two registers                |
+
+## Adding two numbers
+
+In LMC, the second number must be stored in a mailbox before the accumulator can add it:
+
+<LessonSim
+  title="LMC: add two numbers"
+  program={`
+        INP
+        STA first
+        INP
+        ADD first
+        OUT
+        HLT
+first   DAT
+`}
+  inputs="3, 4"
+/>
+
+In RISC-V, each number stays in its own register, and `add` adds two registers into a third:
+
+<RiscvSim
+  title="RISC-V: add two numbers"
+  inputs="3, 4"
+  program={`
+.text
+        li   a7, 5          # read an integer into a0
+        ecall
+        mv   t0, a0         # keep it in t0
+        ecall               # read the second into a0
+        add  a0, t0, a0     # a0 = t0 + a0
+        li   a7, 1          # print a0
+        ecall
+        li   a7, 10         # exit
+        ecall
+`}
+/>
+
+Step through it and watch the **datapath**: each instruction is fetched, decoded (reading two
+registers), executed in the ALU, and its result written back to a register.
+
+<Predict
+  question="How many times does the RISC-V program read memory for data (not instructions)?"
+  choices={["0", "2", "4"]}
+  answer="0"
+  explain="The numbers come from the system calls and live in registers. Only loads (lw, lb…) and stores read and write data memory; LMC, by contrast, has to STA and ADD through a mailbox."
+/>
+
+## A loop
+
+A countdown in LMC tests the accumulator with BRP:
+
+<LessonSim
+  title="LMC: count down"
+  program={`
+        INP
+loop    OUT
+        SUB one
+        BRP loop
+        HLT
+one     DAT 1
+`}
+  inputs="3"
+/>
+
+RISC-V compares registers directly. `bgtz t0, loop` means "branch if t0 > 0":
+
+<RiscvSim
+  title="RISC-V: count down"
+  inputs="3"
+  program={`
+.text
+        li   a7, 5
+        ecall
+        mv   t0, a0
+loop:   mv   a0, t0
+        li   a7, 1
+        ecall
+        li   a0, 10         # a new line
+        li   a7, 11
+        ecall
+        addi t0, t0, -1
+        bgtz t0, loop
+        li   a7, 10
+        ecall
+`}
+/>
+
+<Note>
+  `li`, `mv`, `bgtz` and `j` are **pseudo-instructions**: the assembler turns them into real ones.
+  The listing beside the program shows what each became, with its address and machine code, exactly
+  as RARS shows them.
+</Note>
+
+## Why registers?
+
+Registers sit inside the processor, so using them is much faster than going to memory. That is
+why real instruction sets have many registers and keep memory for loads and stores: the next
+lesson covers those.
