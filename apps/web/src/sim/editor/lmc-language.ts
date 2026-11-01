@@ -2,15 +2,27 @@
 import type { CompletionContext, CompletionResult } from "@codemirror/autocomplete";
 import { HighlightStyle, StreamLanguage, type StringStream } from "@codemirror/language";
 import { tags } from "@lezer/highlight";
-import { DIALECTS, type DialectId } from "@joes-sim/engine";
+import { DIALECTS, EXT_MNEMONICS, type DialectId, type MachineId } from "@joes-sim/engine";
 
-const ALL_MNEMONICS = new Set(
+const CLASSIC_MNEMONICS = new Set(
   Object.values(DIALECTS).flatMap((d) => [
     ...Object.keys(d.spellings),
     ...Object.keys(d.unsupported),
     "DAT",
   ]),
 );
+const EXT = new Set<string>(EXT_MNEMONICS);
+const ALL_MNEMONICS = new Set([...CLASSIC_MNEMONICS, ...EXT]);
+
+/**
+ * The extended machine's names can also be labels ("get LDA table"), as the assembler allows:
+ * an extended name followed by an instruction is a label.
+ */
+function isLabelHere(text: string, rest: string): boolean {
+  if (!EXT.has(text.toUpperCase())) return false;
+  const next = /^\s*([A-Za-z]+)/.exec(rest)?.[1];
+  return next !== undefined && ALL_MNEMONICS.has(next.toUpperCase());
+}
 
 interface LineState {
   /** Position in the line: 0 before any word, then 1, 2... */
@@ -42,7 +54,8 @@ export const lmcLanguage = StreamLanguage.define<LineState>({
     }
     const text = stream.current();
     state.words++;
-    if (ALL_MNEMONICS.has(text.toUpperCase())) {
+    const labelFirst = state.words === 1 && isLabelHere(text, stream.string.slice(stream.pos));
+    if (!labelFirst && ALL_MNEMONICS.has(text.toUpperCase())) {
       state.sawMnemonic = true;
       return "keyword";
     }
@@ -75,15 +88,35 @@ const DESCRIPTIONS: Record<string, string> = {
   HLT: "Stop",
   COB: "Stop (same as HLT)",
   DAT: "Reserve a mailbox, with an optional starting value",
+  PUSH: "Put the accumulator on top of the stack",
+  POP: "Take the top of the stack into the accumulator",
+  CALL: "Call a subroutine (saves the return address on the stack)",
+  RET: "Return from a subroutine",
+  LDX: "Load the index register X from a mailbox",
+  STX: "Store the index register X in a mailbox",
+  INX: "Add one to X",
+  DEX: "Take one from X",
+  EI: "Turn interrupts on",
+  DI: "Turn interrupts off",
+  RTI: "Return from an interrupt handler",
+  VEC: "Set where the interrupt handler starts",
+  WAIT: "Wait for an interrupt",
+  GET: "Read a device port into the accumulator",
+  PUT: "Send the accumulator to a device port",
 };
 
 /** Completes mnemonics allowed by the dialect, and labels defined in the program. */
-export function lmcCompletions(dialect: () => DialectId) {
+export function lmcCompletions(
+  dialect: () => DialectId,
+  machine: () => MachineId = () => "classic",
+) {
   return (context: CompletionContext): CompletionResult | null => {
     const word = context.matchBefore(/[A-Za-z_][A-Za-z0-9_]*/);
     if (!word || (word.from === word.to && !context.explicit)) return null;
     const d = DIALECTS[dialect()];
-    const mnemonics = [...Object.keys(d.spellings), "DAT"].map((label) => ({
+    const names = [...Object.keys(d.spellings), "DAT"];
+    if (machine() === "extended") names.push(...EXT_MNEMONICS);
+    const mnemonics = names.map((label) => ({
       label,
       type: "keyword",
       info: DESCRIPTIONS[label] ?? "",

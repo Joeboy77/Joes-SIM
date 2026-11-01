@@ -1,5 +1,5 @@
 /** Workspace files: programs the learner writes, saved as they type. */
-import type { DialectId } from "@joes-sim/engine";
+import type { DialectId, MachineId } from "@joes-sim/engine";
 import { FILES, RECORDS, get, getAll, put, remove } from "./db";
 
 export interface WorkspaceFile {
@@ -7,6 +7,8 @@ export interface WorkspaceFile {
   readonly name: string;
   readonly source: string;
   readonly dialect: DialectId;
+  /** Absent for the classic machine, which older files always use. */
+  readonly machine?: MachineId;
   /** The inputs typed in, as text. */
   readonly inputs: string;
   readonly created: number;
@@ -28,7 +30,7 @@ export async function saveFile(file: WorkspaceFile): Promise<void> {
 }
 
 export async function createFile(
-  fields: Pick<WorkspaceFile, "name" | "source" | "dialect" | "inputs">,
+  fields: Pick<WorkspaceFile, "name" | "source" | "dialect" | "inputs" | "machine">,
 ): Promise<WorkspaceFile> {
   const now = Date.now();
   const file: WorkspaceFile = { ...fields, id: newId(), created: now, updated: now };

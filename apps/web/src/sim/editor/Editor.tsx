@@ -182,7 +182,14 @@ export function Editor({ readOnly = false }: { readOnly?: boolean }) {
       history(),
       lmcLanguage,
       syntaxHighlighting(lmcHighlight),
-      autocompletion({ override: [lmcCompletions(() => store.getState().dialect)] }),
+      autocompletion({
+        override: [
+          lmcCompletions(
+            () => store.getState().dialect,
+            () => store.getState().machine,
+          ),
+        ],
+      }),
       keymap.of([...defaultKeymap, ...historyKeymap, ...completionKeymap, indentWithTab]),
       EditorView.contentAttributes.of({ "aria-label": "Program code", spellcheck: "false" }),
       EditorView.updateListener.of((u) => {

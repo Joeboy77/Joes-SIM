@@ -130,6 +130,17 @@ describe(".lmc files", () => {
     expect(fromLmc(text)).toEqual({
       source: "        INP\n        OTC\n        HLT\n",
       dialect: "higginson",
+      machine: "classic",
+    });
+  });
+
+  it("marks programs for the extended machine", () => {
+    const text = toLmc({ source: "        PUSH\n", dialect: "classic", machine: "extended" });
+    expect(text).toBe("// dialect: classic\n// machine: extended\n        PUSH\n");
+    expect(fromLmc(text)).toEqual({
+      source: "        PUSH\n",
+      dialect: "classic",
+      machine: "extended",
     });
   });
 
@@ -137,6 +148,7 @@ describe(".lmc files", () => {
     expect(fromLmc("INP\r\nOUT\r\nHLT", "ocr")).toEqual({
       source: "INP\nOUT\nHLT",
       dialect: "ocr",
+      machine: "classic",
     });
     expect(fromLmc("// dialect: nonsense\nHLT").dialect).toBe("classic");
   });

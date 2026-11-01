@@ -2,12 +2,14 @@
  * Opening a program in the simulator from elsewhere in the app, such as a failing challenge test.
  * The program travels in the URL fragment (#open=...), which browsers never send to a server.
  */
-import { isDialectId, type DialectId } from "@joes-sim/engine";
+import { isDialectId, type DialectId, type MachineId } from "@joes-sim/engine";
 
 export interface Handoff {
   readonly name: string;
   readonly source: string;
   readonly dialect: DialectId;
+  /** Absent means the classic machine. */
+  readonly machine?: MachineId;
   readonly inputs: string;
   /** Instructions to run before showing the machine. */
   readonly cycle: number;
@@ -41,6 +43,7 @@ export function readHandoff(hash: string): Handoff | null {
       name: typeof d.name === "string" ? d.name : "Opened program",
       source: d.source,
       dialect: d.dialect,
+      ...(d.machine === "extended" ? { machine: "extended" as const } : {}),
       inputs: typeof d.inputs === "string" ? d.inputs : "",
       cycle: typeof d.cycle === "number" && d.cycle >= 0 ? Math.floor(d.cycle) : 0,
     };

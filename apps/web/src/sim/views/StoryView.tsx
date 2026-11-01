@@ -35,23 +35,28 @@ function mailboxPos(address: number) {
 /** Where the Little Man stands for each part of the machine. */
 function spotFor(c: Component, state: MachineState) {
   switch (c) {
+    // The stack lives in the mailboxes, and SP points into them.
     case "MEMORY":
     case "MAR":
-    case "MDR": {
+    case "MDR":
+    case "SP": {
       const m = mailboxPos(state.mar);
       return { x: Math.max(MAILBOX.x - 18, m.x - 6), y: Math.min(400, m.y + 34) };
     }
     case "PC":
+    case "IV":
       return SPOTS.counter;
     case "IR":
     case "CONTROL":
       return SPOTS.board;
     case "ACC":
     case "ALU":
+    case "X":
       return SPOTS.calculator;
     case "INPUT":
       return SPOTS.inTray;
     case "OUTPUT":
+    case "DEVICE":
       return SPOTS.outTray;
   }
 }
@@ -391,6 +396,10 @@ function describe(state: MachineState, at: Component | undefined): string {
         ALU: "the calculator",
         INPUT: "the in-tray",
         OUTPUT: "the out-tray",
+        SP: "the stack of mailboxes",
+        X: "the calculator",
+        IV: "the counter",
+        DEVICE: "the out-tray, by the devices",
       }[at]
     : "the middle of the room";
   return `Story view. The Little Man is at ${where}. Counter ${state.pc}, calculator ${formatValue(state.acc)}.`;

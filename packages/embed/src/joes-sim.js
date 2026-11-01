@@ -10,7 +10,17 @@
   if (typeof window === "undefined" || window.customElements.get("joes-sim")) return;
   const script = /** @type {HTMLScriptElement | null} */ (document.currentScript);
   const base = script && script.src ? new URL(script.src).origin : window.location.origin;
-  const names = ["program", "p", "name", "dialect", "view", "inputs", "readonly", "panels"];
+  const names = [
+    "program",
+    "p",
+    "name",
+    "dialect",
+    "machine",
+    "view",
+    "inputs",
+    "readonly",
+    "panels",
+  ];
 
   class JoesSim extends HTMLElement {
     static get observedAttributes() {

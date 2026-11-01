@@ -10,6 +10,7 @@ describe("embed options", () => {
       p: null,
       name: "",
       dialect: null,
+      machine: null,
       view: null,
       inputs: null,
       readonly: false,

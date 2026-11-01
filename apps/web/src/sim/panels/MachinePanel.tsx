@@ -1,11 +1,14 @@
 "use client";
 
 import { useSimState } from "../SimProvider";
+import { ExtendedPanel } from "../extended/ExtendedPanel";
 import { useActivity } from "../useActivity";
 import { DatapathView } from "../views/DatapathView";
 import { FlowView } from "../views/FlowView";
 import { MemoryGrid } from "../views/MemoryGrid";
 import { StoryView } from "../views/StoryView";
+
+const pad = (n: number) => String(n).padStart(2, "0");
 
 export function MachinePanel({ memory = true }: { memory?: boolean }) {
   const view = useSimState((s) => s.view);
@@ -19,11 +22,31 @@ export function MachinePanel({ memory = true }: { memory?: boolean }) {
       </div>
       {b && (
         <p className="rounded-sm border border-branch px-3 py-1.5 text-sm" role="note">
-          <span className="font-bold text-branch">↪ Branch</span> at mailbox{" "}
-          {String(b.from).padStart(2, "0")} to {String(b.target).padStart(2, "0")}:{" "}
-          {b.taken ? "✓ taken, jumping there" : "✗ not taken, carrying on to the next mailbox"}
+          {b.kind === "call" ? (
+            <>
+              <span className="font-bold text-branch">↪ Call</span> from mailbox {pad(b.from)} to
+              the subroutine at {pad(b.target)}. The return address is on the stack.
+            </>
+          ) : b.kind === "return" ? (
+            <>
+              <span className="font-bold text-branch">↩ Return</span> from mailbox {pad(b.from)}{" "}
+              back to the caller at {pad(b.target)}.
+            </>
+          ) : b.kind === "interrupt" ? (
+            <>
+              <span className="font-bold text-branch">⚡ Interrupt</span>: the main program stops
+              before mailbox {pad(b.from)}; the handler at {pad(b.target)} runs.
+            </>
+          ) : (
+            <>
+              <span className="font-bold text-branch">↪ Branch</span> at mailbox {pad(b.from)} to{" "}
+              {pad(b.target)}:{" "}
+              {b.taken ? "✓ taken, jumping there" : "✗ not taken, carrying on to the next mailbox"}
+            </>
+          )}
         </p>
       )}
+      <ExtendedPanel />
       {memory && <MemoryGrid />}
     </div>
   );

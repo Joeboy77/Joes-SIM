@@ -13,6 +13,7 @@ import {
   assemble,
   createState,
   isValidInput,
+  pressKey as enginePressKey,
   provideInput as engineProvideInput,
   run,
   step,
@@ -22,6 +23,7 @@ import {
   type DialectId,
   type Finding,
   type InfiniteLoop,
+  type MachineId,
   type MachineState,
   type MicroStep,
   type RunCondition,
@@ -68,6 +70,8 @@ export function parseInputs(text: string, dialect: DialectId): InputParse {
 export interface SimState {
   source: string;
   dialect: DialectId;
+  /** The classic machine, or the extended one with a stack, interrupts and devices. */
+  machine: MachineId;
   inputText: string;
   inputError: string | null;
   assembled: AssembleResult;
@@ -98,7 +102,7 @@ export interface SimState {
   stopReason: StopReason | null;
   loop: InfiniteLoop | null;
   busy: boolean;
-  /** Playback stopped only because INP needed a value; giving one resumes it. */
+  /** Playback stopped only because INP needed a value (or WAIT a key); giving one resumes it. */
   resumeAfterInput: boolean;
 
   level: Level;
@@ -116,6 +120,7 @@ export interface SimState {
 export interface SimActions {
   setSource(source: string): void;
   setDialect(dialect: DialectId): void;
+  setMachine(machine: MachineId): void;
   setInputText(text: string): void;
   reset(): void;
   stepMicro(): void;
@@ -137,6 +142,8 @@ export interface SimActions {
   togglePresentation(): void;
   toggleBreakpoint(address: number): void;
   provideInput(value: number): void;
+  /** A key typed on the extended machine's keyboard. */
+  pressKey(key: number): void;
   /** Applies the result of an instant run (from the worker or the main thread). */
   applyRun(state: MachineState, reason: StopReason, loop?: InfiniteLoop, condition?: number): void;
   setLevel(level: Level): void;
@@ -150,11 +157,17 @@ export interface SimActions {
 
 export type SimStore = SimState & SimActions;
 
-function build(source: string, dialect: DialectId, inputText: string) {
-  const assembled = assemble(source, { dialect });
+function build(source: string, dialect: DialectId, inputText: string, machine: MachineId) {
+  const assembled = assemble(source, { dialect, machine });
   const parsed = parseInputs(inputText, dialect);
   const initial = assembled.program
-    ? createState({ memory: assembled.program.memory, inputs: parsed.values, dialect })
+    ? createState({
+        memory: assembled.program.memory,
+        inputs: parsed.values,
+        dialect,
+        machine,
+        stackFloor: assembled.program.size,
+      })
     : null;
   const findings = assembled.program ? analyse(assembled.program, { inputs: parsed.values }) : [];
   return {
@@ -182,15 +195,17 @@ function stopReasonOf(state: MachineState): StopReason | null {
   if (state.status === "halted") return "halted";
   if (state.status === "error") return "error";
   if (state.status === "waiting-input") return "waiting-input";
+  if (state.status === "waiting-interrupt") return "waiting-interrupt";
   return null;
 }
 
 export function createSimStore(
-  initial: Partial<Pick<SimState, "source" | "dialect" | "inputText">> = {},
+  initial: Partial<Pick<SimState, "source" | "dialect" | "inputText" | "machine">> = {},
 ) {
   const source = initial.source ?? STARTER_PROGRAM;
   const dialect = initial.dialect ?? "classic";
   const inputText = initial.inputText ?? "3, 4";
+  const machine = initial.machine ?? "classic";
 
   return createStore<SimStore>()((set, get) => {
     /** Brings the trace up to the current state. Call after every change of position. */
@@ -257,8 +272,9 @@ export function createSimStore(
     return {
       source,
       dialect,
+      machine,
       inputText,
-      ...build(source, dialect, inputText),
+      ...build(source, dialect, inputText, machine),
       stepId: 0,
       breakpoints: [],
       speed: "normal",
@@ -272,23 +288,28 @@ export function createSimStore(
       hoverTerm: null,
 
       setSource(next) {
-        const { dialect, inputText, stepId } = get();
-        set({ source: next, ...build(next, dialect, inputText), stepId: stepId + 1 });
+        const { dialect, inputText, machine, stepId } = get();
+        set({ source: next, ...build(next, dialect, inputText, machine), stepId: stepId + 1 });
       },
 
       setDialect(next) {
-        const { source, inputText, stepId } = get();
-        set({ dialect: next, ...build(source, next, inputText), stepId: stepId + 1 });
+        const { source, inputText, machine, stepId } = get();
+        set({ dialect: next, ...build(source, next, inputText, machine), stepId: stepId + 1 });
+      },
+
+      setMachine(next) {
+        const { source, dialect, inputText, stepId } = get();
+        set({ machine: next, ...build(source, dialect, inputText, next), stepId: stepId + 1 });
       },
 
       setInputText(text) {
-        const { source, dialect, stepId } = get();
-        set({ inputText: text, ...build(source, dialect, text), stepId: stepId + 1 });
+        const { source, dialect, machine, stepId } = get();
+        set({ inputText: text, ...build(source, dialect, text, machine), stepId: stepId + 1 });
       },
 
       reset() {
-        const { source, dialect, inputText, stepId } = get();
-        set({ ...build(source, dialect, inputText), stepId: stepId + 1 });
+        const { source, dialect, inputText, machine, stepId } = get();
+        set({ ...build(source, dialect, inputText, machine), stepId: stepId + 1 });
       },
 
       stepMicro() {
@@ -365,7 +386,8 @@ export function createSimStore(
         if (unit === "none") return false;
         const next = advance(unit);
         if (!next || next.status !== "ready") {
-          set({ playing: false, resumeAfterInput: next?.status === "waiting-input" });
+          const waiting = next?.status === "waiting-input" || next?.status === "waiting-interrupt";
+          set({ playing: false, resumeAfterInput: waiting });
           return false;
         }
         if (next.stage === 0 && breakpoints.includes(next.pc)) {
@@ -439,6 +461,26 @@ export function createSimStore(
           stopReason: null,
           resumeAfterInput: false,
           playing: resumeAfterInput && SPEEDS[speed].unit !== "none",
+        });
+        syncTrace();
+      },
+
+      pressKey(key) {
+        const { state, initial, resumeAfterInput, speed } = get();
+        if (!state?.ext || !initial?.ext) return;
+        const next = enginePressKey(state, key);
+        if (next === state) return;
+        const keys = next.ext?.keys ?? [];
+        // As with inputs, the starting state keeps every key, so replays type them too.
+        get().trace?.setKeys(keys);
+        const woke = state.status === "waiting-interrupt";
+        set({
+          initial: { ...initial, ext: { ...initial.ext, keys } },
+          state: next,
+          history: new History(next),
+          stopReason: woke ? null : get().stopReason,
+          resumeAfterInput: false,
+          playing: get().playing || (woke && resumeAfterInput && SPEEDS[speed].unit !== "none"),
         });
         syncTrace();
       },

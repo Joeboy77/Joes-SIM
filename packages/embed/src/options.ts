@@ -7,6 +7,7 @@ export type Panel = (typeof PANELS)[number];
 export const DEFAULT_PANELS: readonly Panel[] = ["editor", "machine", "explain", "io"];
 
 const DIALECTS = ["classic", "higginson", "ocr"] as const;
+const MACHINES = ["classic", "extended"] as const;
 const VIEWS = ["datapath", "story", "flow"] as const;
 
 export interface EmbedSettings {
@@ -16,6 +17,8 @@ export interface EmbedSettings {
   readonly p: string | null;
   readonly name: string;
   readonly dialect: (typeof DIALECTS)[number] | null;
+  /** "extended" adds the stack, interrupts and devices. */
+  readonly machine: (typeof MACHINES)[number] | null;
   readonly view: (typeof VIEWS)[number] | null;
   readonly inputs: string | null;
   /** The program can be read and run but not edited. */
@@ -29,6 +32,7 @@ export const OPTION_NAMES = [
   "p",
   "name",
   "dialect",
+  "machine",
   "view",
   "inputs",
   "readonly",
@@ -59,6 +63,7 @@ export function parseEmbedOptions(params: URLSearchParams): EmbedSettings {
     p: params.get("p"),
     name: (params.get("name") ?? "").slice(0, 80),
     dialect: pick(params.get("dialect"), DIALECTS),
+    machine: pick(params.get("machine"), MACHINES),
     view: pick(params.get("view"), VIEWS),
     inputs: params.get("inputs"),
     readonly: flag(params.get("readonly")),

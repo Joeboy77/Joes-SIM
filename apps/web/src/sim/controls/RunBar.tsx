@@ -57,6 +57,8 @@ export function RunBar() {
   const busy = useSimState((s) => s.busy);
   const speed = useSimState((s) => s.speed);
   const dialect = useSimState((s) => s.dialect);
+  const machine = useSimState((s) => s.machine);
+  const machineId = useId();
   const maxCycle = useSimState((s) => s.maxCycle);
   const view = useSimState((s) => s.view);
   const speedId = useId();
@@ -172,6 +174,21 @@ export function RunBar() {
                 {SPEEDS[s].label}
               </option>
             ))}
+          </select>
+        </div>
+
+        <div className="flex items-center gap-1">
+          <label htmlFor={machineId} className="text-sm text-muted">
+            {t("run.machine")}
+          </label>
+          <select
+            id={machineId}
+            value={machine}
+            onChange={(e) => a.setMachine(e.target.value === "extended" ? "extended" : "classic")}
+            className="min-h-11 rounded-sm border border-border-strong bg-surface px-2 text-sm text-text"
+          >
+            <option value="classic">{t("run.machineClassic")}</option>
+            <option value="extended">{t("run.machineExtended")}</option>
           </select>
         </div>
 

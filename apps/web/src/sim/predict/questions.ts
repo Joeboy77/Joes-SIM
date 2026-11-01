@@ -19,7 +19,10 @@ const pad = (a: number) => String(a).padStart(2, "0");
 export function questionFor(state: MachineState): Question | null {
   if (state.status !== "ready" || state.stage !== 0) return null;
   const word = state.memory[state.pc] ?? 0;
-  const text = disassembleWord(word, state.dialect).text;
+  const text = disassembleWord(word, state.dialect, {
+    machine: state.ext ? "extended" : "classic",
+    next: state.memory[(state.pc + 1) % 100] ?? 0,
+  }).text;
   const r = step(state, { granularity: "instruction" });
   const where = `mailbox ${pad(state.pc)} (${text})`;
   if (r.state.status === "error") {
@@ -39,6 +42,8 @@ export function questionFor(state: MachineState): Question | null {
     case "ADD":
     case "SUB":
     case "INP":
+    case "POP":
+    case "GET":
       return {
         kind: "acc",
         prompt: `After ${where}, what will the accumulator hold?`,
@@ -58,6 +63,8 @@ export function questionFor(state: MachineState): Question | null {
       };
     }
     case "BRA":
+    case "CALL":
+    case "RET":
       return {
         kind: "pc",
         prompt: `After ${where}, which mailbox runs next?`,
@@ -83,14 +90,18 @@ export function questionFor(state: MachineState): Question | null {
         instruction: text,
       };
     }
-    case "STA":
+    case "STA": {
+      // With indirect or indexed addressing the mailbox is worked out as the program runs.
+      const write = r.events.find((e) => e.type === "memory-write");
+      const target = write?.type === "memory-write" ? write.address : decode.address;
       return {
         kind: "memory",
-        prompt: `After ${where}, what will mailbox ${pad(decode.address)} hold?`,
-        answer: r.state.memory[decode.address] ?? 0,
+        prompt: `After ${where}, what will mailbox ${pad(target)} hold?`,
+        answer: r.state.memory[target] ?? 0,
         input: "number",
         instruction: text,
       };
+    }
     case "HLT":
       return {
         kind: "halt",
@@ -99,6 +110,8 @@ export function questionFor(state: MachineState): Question | null {
         input: "yes-no",
         instruction: text,
       };
+    default:
+      return null;
   }
 }
 

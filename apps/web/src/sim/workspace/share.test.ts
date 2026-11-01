@@ -6,6 +6,7 @@ const program = {
   name: "Add two numbers",
   source: STARTER_PROGRAM,
   dialect: "higginson" as const,
+  machine: "classic" as const,
   inputs: "3, 4",
   view: "story" as const,
 };
@@ -25,6 +26,11 @@ describe("share links", () => {
   it("leave out defaults", () => {
     const plain = { ...program, name: "", inputs: "", view: "datapath" as const };
     expect(decodeShare(encodeShare(plain))).toEqual(plain);
+  });
+
+  it("carry the extended machine", () => {
+    const ext = { ...program, machine: "extended" as const };
+    expect(decodeShare(encodeShare(ext))).toEqual(ext);
   });
 
   it("ignore damaged or foreign links", () => {

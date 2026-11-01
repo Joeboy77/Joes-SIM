@@ -81,6 +81,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       current.current = f;
       setFile(f);
       const s = store.getState();
+      s.setMachine(f.machine ?? "classic");
       s.setDialect(f.dialect);
       s.setInputText(f.inputs);
       s.setSource(f.source);
@@ -101,6 +102,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
               name: shared.name || "Shared program",
               source: shared.source,
               dialect: shared.dialect,
+              machine: shared.machine ?? "classic",
               inputs: shared.inputs,
               cycle: 0,
             }
@@ -110,6 +112,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
           if (!shared) history.replaceState(null, "", window.location.pathname);
           const s = store.getState();
           if (shared) s.setView(shared.view);
+          s.setMachine(handoff.machine ?? "classic");
           s.setDialect(handoff.dialect);
           s.setInputText(handoff.inputs);
           s.setSource(handoff.source);
@@ -155,8 +158,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       timer = null;
       const f = current.current;
       if (!f) return;
-      const { source, dialect, inputText } = store.getState();
-      const next = { ...f, source, dialect, inputs: inputText, updated: Date.now() };
+      const { source, dialect, machine, inputText } = store.getState();
+      const next = { ...f, source, dialect, machine, inputs: inputText, updated: Date.now() };
       current.current = next;
       void saveFile(next)
         .then(() => {
@@ -175,8 +178,14 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     };
     const unsubscribe = store.subscribe((s, prev) => {
       if (loading.current || !current.current) return;
-      if (s.source === prev.source && s.dialect === prev.dialect && s.inputText === prev.inputText)
+      if (
+        s.source === prev.source &&
+        s.dialect === prev.dialect &&
+        s.machine === prev.machine &&
+        s.inputText === prev.inputText
+      ) {
         return;
+      }
       setStatus("saving");
       if (timer) clearTimeout(timer);
       timer = setTimeout(save, SAVE_DELAY);
@@ -213,6 +222,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         name: uniqueName("Untitled", await listFiles()),
         source: "        HLT\n",
         dialect: store.getState().dialect,
+        machine: store.getState().machine,
         inputs: "",
       });
       await refresh();
@@ -240,22 +250,24 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       else await api.create();
     },
     async importLmc(name, text) {
-      const { source, dialect } = fromLmc(text, store.getState().dialect);
+      const { source, dialect, machine } = fromLmc(text, store.getState().dialect);
       const f = await createFile({
         name: uniqueName(name.replace(/\.[^.]+$/, "") || "Imported", await listFiles()),
         source,
         dialect,
+        machine,
         inputs: "",
       });
       await refresh();
       await open(f.id);
     },
     async saveScratch() {
-      const { source, dialect, inputText } = store.getState();
+      const { source, dialect, machine, inputText } = store.getState();
       const f = await createFile({
         name: uniqueName(scratch?.name ?? "Opened program", await listFiles()),
         source,
         dialect,
+        machine,
         inputs: inputText,
       });
       await setCurrentFileId(f.id);

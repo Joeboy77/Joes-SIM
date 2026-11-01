@@ -12,6 +12,7 @@ export function ShareButton() {
   const ws = useWorkspace();
   const source = useSimState((s) => s.source);
   const dialect = useSimState((s) => s.dialect);
+  const machine = useSimState((s) => s.machine);
   const inputs = useSimState((s) => s.inputText);
   const view = useSimState((s) => s.view);
   const [open, setOpen] = useState(false);
@@ -39,7 +40,9 @@ export function ShareButton() {
     () => "share" in navigator,
     () => false,
   );
-  const link = origin ? `${origin}${sharePath({ name, source, dialect, inputs, view })}` : "";
+  const link = origin
+    ? `${origin}${sharePath({ name, source, dialect, machine, inputs, view })}`
+    : "";
 
   return (
     <>

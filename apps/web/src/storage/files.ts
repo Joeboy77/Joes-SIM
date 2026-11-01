@@ -3,27 +3,37 @@
  * backup .json file. Pure functions, so they are easy to test; the page does the downloading.
  */
 import { parsePack, type Pack } from "@joes-sim/content";
-import { isDialectId, type DialectId } from "@joes-sim/engine";
+import { isDialectId, type DialectId, type MachineId } from "@joes-sim/engine";
 import { normaliseProgress, type Progress } from "./progress";
 import type { WorkspaceFile } from "./workspace";
 
 const DIALECT_LINE = /^\/\/ dialect: ([a-z]+)\s*$/;
+const MACHINE_LINE = /^\/\/ machine: extended\s*$/;
 
-/** An .lmc file is the source, with its dialect on the first line as a comment. */
-export function toLmc(file: Pick<WorkspaceFile, "source" | "dialect">): string {
+/**
+ * An .lmc file is the source, with its dialect on the first line as a comment, and a second
+ * comment line for programs written for the extended machine.
+ */
+export function toLmc(file: Pick<WorkspaceFile, "source" | "dialect" | "machine">): string {
   const source = file.source.endsWith("\n") ? file.source : `${file.source}\n`;
-  return `// dialect: ${file.dialect}\n${source}`;
+  const machine = file.machine === "extended" ? "// machine: extended\n" : "";
+  return `// dialect: ${file.dialect}\n${machine}${source}`;
 }
 
 export function fromLmc(
   text: string,
   fallback: DialectId = "classic",
-): { source: string; dialect: DialectId } {
+): { source: string; dialect: DialectId; machine: MachineId } {
   const normalised = text.replace(/\r\n?/g, "\n");
   const [first, ...rest] = normalised.split("\n");
   const m = first?.match(DIALECT_LINE);
-  if (m?.[1] && isDialectId(m[1])) return { source: rest.join("\n"), dialect: m[1] };
-  return { source: normalised, dialect: fallback };
+  if (m?.[1] && isDialectId(m[1])) {
+    if (rest[0] !== undefined && MACHINE_LINE.test(rest[0])) {
+      return { source: rest.slice(1).join("\n"), dialect: m[1], machine: "extended" };
+    }
+    return { source: rest.join("\n"), dialect: m[1], machine: "classic" };
+  }
+  return { source: normalised, dialect: fallback, machine: "classic" };
 }
 
 /** A file name for a program: letters, digits and hyphens, ending in .lmc. */
@@ -106,6 +116,7 @@ export function parseBackup(text: string): BackupResult {
       name: f.name,
       source: f.source,
       dialect: f.dialect,
+      ...(f.machine === "extended" ? { machine: "extended" as const } : {}),
       inputs: typeof f.inputs === "string" ? f.inputs : "",
       created: typeof f.created === "number" ? f.created : 0,
       updated: typeof f.updated === "number" ? f.updated : 0,

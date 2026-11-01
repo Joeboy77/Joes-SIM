@@ -290,3 +290,38 @@ describe("simulator store", () => {
     });
   });
 });
+
+const ECHO = `
+        VEC key
+        EI
+idle    WAIT
+        BRA idle
+key     GET 2
+        OUT
+        RTI
+`;
+
+describe("the extended machine in the store", () => {
+  it("assembles for the chosen machine", () => {
+    const store = createSimStore({ source: ECHO, inputText: "" });
+    expect(store.getState().state).toBeNull();
+    store.getState().setMachine("extended");
+    expect(loaded(store).ext?.sp).toBe(100);
+    expect(store.getState().assembled.program?.machine).toBe("extended");
+  });
+
+  it("wakes WAIT with a key press, and keeps keys when replaying the timeline", () => {
+    const store = createSimStore({ source: ECHO, inputText: "", machine: "extended" });
+    const a = store.getState();
+    const result = run(loaded(store));
+    a.applyRun(result.state, result.reason);
+    expect(store.getState().stopReason).toBe("waiting-interrupt");
+    a.pressKey(65);
+    for (let i = 0; i < 6; i++) store.getState().stepInstruction();
+    expect(outputs(store)).toEqual([65]);
+    const at = loaded(store).cycles;
+    store.getState().jumpToCycle(0);
+    store.getState().jumpToCycle(at);
+    expect(outputs(store)).toEqual([65]);
+  });
+});

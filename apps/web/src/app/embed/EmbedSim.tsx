@@ -17,6 +17,7 @@ interface Ready {
   readonly settings: EmbedSettings;
   readonly source: string;
   readonly dialect: NonNullable<EmbedSettings["dialect"]>;
+  readonly machine: "classic" | "extended";
   readonly inputs: string;
   readonly view: NonNullable<EmbedSettings["view"]>;
   readonly name: string;
@@ -30,6 +31,7 @@ function read(search: string): Ready {
     settings,
     source: settings.program ?? shared?.source ?? STARTER_PROGRAM,
     dialect: settings.dialect ?? shared?.dialect ?? "classic",
+    machine: settings.machine ?? shared?.machine ?? "classic",
     inputs:
       settings.inputs ?? shared?.inputs ?? (settings.program === null && !shared ? "3, 4" : ""),
     view: settings.view ?? shared?.view ?? "datapath",
@@ -43,7 +45,12 @@ export function EmbedSim() {
   if (!ready) return <p className="p-3 text-muted">Loading the simulator…</p>;
   return (
     <SimProvider
-      initial={{ source: ready.source, dialect: ready.dialect, inputText: ready.inputs }}
+      initial={{
+        source: ready.source,
+        dialect: ready.dialect,
+        machine: ready.machine,
+        inputText: ready.inputs,
+      }}
     >
       <Embedded ready={ready} />
     </SimProvider>
@@ -57,12 +64,13 @@ function Embedded({ ready }: { ready: Ready }) {
   const has = (p: (typeof settings.panels)[number]) => settings.panels.includes(p);
   const source = useSimState((s) => s.source);
   const dialect = useSimState((s) => s.dialect);
+  const machine = useSimState((s) => s.machine);
   const inputs = useSimState((s) => s.inputText);
   const view = useSimState((s) => s.view);
 
   useEffect(() => store.getState().setView(ready.view), [store, ready.view]);
 
-  const open = sharePath({ name: ready.name, source, dialect, inputs, view });
+  const open = sharePath({ name: ready.name, source, dialect, machine, inputs, view });
 
   return (
     <div className="space-y-3 p-2">

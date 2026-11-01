@@ -19,6 +19,7 @@ export function FilesMenu() {
   const ws = useWorkspace();
   const source = useSimState((s) => s.source);
   const dialect = useSimState((s) => s.dialect);
+  const machine = useSimState((s) => s.machine);
   const [open, setOpen] = useState(false);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [name, setName] = useState("");
@@ -179,7 +180,7 @@ export function FilesMenu() {
           <button
             type="button"
             onClick={() =>
-              downloadText(lmcFileName(title), toLmc({ source, dialect }), "text/plain")
+              downloadText(lmcFileName(title), toLmc({ source, dialect, machine }), "text/plain")
             }
             className="min-h-11 rounded-md border border-border-strong px-3"
           >

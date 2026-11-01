@@ -10,6 +10,7 @@ export function StatusLine() {
   const reason = useSimState((s) => s.stopReason);
   const loop = useSimState((s) => s.loop);
   const dialect = useSimState((s) => s.dialect);
+  const machine = useSimState((s) => s.machine);
   const busy = useSimState((s) => s.busy);
   const loading = useWorkspaceLoading();
   const condition = useSimState((s) =>
@@ -39,6 +40,8 @@ export function StatusLine() {
     tone = "text-danger";
   } else if (state.status === "waiting-input") {
     text = "Waiting for an input. Type a value in the Inputs panel.";
+  } else if (state.status === "waiting-interrupt") {
+    text = "WAIT is waiting for a key press. Type on the keyboard device to wake the program.";
   } else if (reason === "condition" && condition) {
     text = `Stopped after step ${state.cycles}, because ${describeCondition(condition)}.`;
   } else if (reason === "breakpoint") {
@@ -57,7 +60,8 @@ export function StatusLine() {
         {text}
       </p>
       <p className="text-muted">
-        Dialect: <span className="font-bold text-text">{DIALECTS[dialect].name}</span>
+        {machine === "extended" ? "Extended machine. " : ""}Dialect:{" "}
+        <span className="font-bold text-text">{DIALECTS[dialect].name}</span>
       </p>
     </div>
   );

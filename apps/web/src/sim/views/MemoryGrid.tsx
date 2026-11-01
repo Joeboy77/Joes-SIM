@@ -25,6 +25,7 @@ export function MemoryGrid() {
   const program = useSimState((s) => s.assembled.program);
   const breakpoints = useSimState((s) => s.breakpoints);
   const dialect = useSimState((s) => s.dialect);
+  const machine = useSimState((s) => s.machine);
   const { activity } = useActivity();
   const heatmap = useSimState((s) => s.heatmap);
   const { trace } = useTrace();
@@ -68,6 +69,12 @@ export function MemoryGrid() {
         <span className="text-write">↑ write</span> <span className="text-accent">▶ running</span>{" "}
         <span className="text-danger">● breakpoint</span>{" "}
         <span className="text-branch">↪ branch target</span>
+        {state.ext ? (
+          <>
+            {" "}
+            <span className="text-write">▤ stack</span>
+          </>
+        ) : null}
       </p>
       <div className="grid grid-cols-10 gap-1" role="group" aria-label="Memory: 100 mailboxes">
         {Array.from({ length: 10 }, (_, row) => (
@@ -81,8 +88,17 @@ export function MemoryGrid() {
               const bp = breakpoints.includes(a);
               const target = branch !== null && a === branch.target;
               const label = labelAt.get(a);
+              const kind = program?.kinds[a];
               const meaning =
-                program?.kinds[a] === "code" ? disassembleWord(value, dialect).text : null;
+                kind === "code"
+                  ? disassembleWord(value, dialect, {
+                      machine,
+                      next: state.memory[(a + 1) % 100] ?? 0,
+                    }).text
+                  : kind === "operand"
+                    ? "the address or port of the instruction before"
+                    : null;
+              const onStack = state.ext !== undefined && a >= state.ext.sp;
               const usage = trace ? usageOf(trace, a) : "unused";
               const heat = heatmap ? uses(a) / most : 0;
               const marks = [
@@ -90,6 +106,7 @@ export function MemoryGrid() {
                 read && "just read",
                 written && "just written",
                 bp && "breakpoint",
+                onStack && "on the stack",
                 target && (branch.taken ? "branch target, taken" : "branch target, not taken"),
               ]
                 .filter(Boolean)
@@ -147,7 +164,9 @@ export function MemoryGrid() {
                           ? "border-read border-2"
                           : target
                             ? `border-branch border-2 ${branch.taken ? "" : "border-dashed"}`
-                            : "border-border",
+                            : onStack
+                              ? "border-write border-dotted border-2"
+                              : "border-border",
                     program?.kinds[a] === "empty" ? "text-muted" : "text-text",
                   ].join(" ")}
                 >

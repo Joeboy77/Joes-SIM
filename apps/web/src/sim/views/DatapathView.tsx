@@ -35,7 +35,14 @@ const BOXES: Record<Component, Box> = {
   ALU: { x: 196, y: 346, w: BOX_W, h: BOX_H, title: "ALU", hint: "adds and subtracts" },
   ACC: { x: 376, y: 346, w: BOX_W, h: BOX_H, title: "ACC", hint: "accumulator" },
   OUTPUT: { x: 564, y: 346, w: BOX_W, h: BOX_H, title: "Output", hint: "last value output" },
+  // The extended machine only.
+  SP: { x: 196, y: 16, w: BOX_W, h: BOX_H, title: "SP", hint: "stack pointer" },
+  X: { x: 376, y: 16, w: BOX_W, h: BOX_H, title: "X", hint: "index register" },
+  IV: { x: 556, y: 16, w: BOX_W, h: BOX_H, title: "IV", hint: "interrupt vector" },
+  DEVICE: { x: 376, y: 260, w: BOX_W, h: 58, title: "Devices", hint: "GET and PUT ports" },
 };
+
+const EXTENDED_PARTS = new Set<Component>(["SP", "X", "IV", "DEVICE"]);
 
 const centre = (c: Component) => {
   const b = BOXES[c];
@@ -66,6 +73,17 @@ const BUSES: [Component, Component][] = [
   ["ACC", "OUTPUT"],
 ];
 
+const EXTENDED_BUSES: [Component, Component][] = [
+  ["SP", "MAR"],
+  ["X", "MAR"],
+  ["MDR", "MAR"],
+  ["MDR", "X"],
+  ["MDR", "PC"],
+  ["MDR", "IV"],
+  ["IV", "PC"],
+  ["ACC", "DEVICE"],
+];
+
 const toPath = (points: { x: number; y: number }[]) =>
   points.map((p, i) => `${i === 0 ? "M" : "L"}${p.x} ${p.y}`).join(" ");
 
@@ -75,6 +93,10 @@ export function DatapathView() {
   const hover = useSimState((s) => s.hoverTerm);
   if (!state) return <EmptyMachine />;
 
+  const ext = state.ext;
+  const parts = (Object.keys(BOXES) as Component[]).filter((c) => ext || !EXTENDED_PARTS.has(c));
+  const buses = ext ? [...BUSES, ...EXTENDED_BUSES] : BUSES;
+  const lastDevice = activity.devicePort;
   const decodedOp = Math.floor(state.ir / 100);
   const decodedAddr = ((state.ir % 100) + 100) % 100;
   const lastOut = state.outputs.at(-1);
@@ -98,6 +120,10 @@ export function DatapathView() {
         ? JSON.stringify(lastOut.char)
         : formatValue(lastOut.value)
       : "none",
+    SP: ext ? (ext.sp === 100 ? "empty" : String(ext.sp).padStart(2, "0")) : "",
+    X: ext ? formatValue(ext.x) : "",
+    IV: ext ? `${String(ext.iv).padStart(2, "0")} ${ext.ie ? "on" : "off"}` : "",
+    DEVICE: lastDevice === null ? "idle" : `port ${String(lastDevice).padStart(2, "0")}`,
   };
 
   return (
@@ -105,9 +131,9 @@ export function DatapathView() {
       viewBox="0 0 712 424"
       className="h-auto w-full"
       role="img"
-      aria-label={`Datapath. PC ${values.PC}, MAR ${values.MAR}, MDR ${values.MDR}, IR ${values.IR}, accumulator ${values.ACC}, negative flag ${state.negative ? "set" : "clear"}.`}
+      aria-label={`Datapath. PC ${values.PC}, MAR ${values.MAR}, MDR ${values.MDR}, IR ${values.IR}, accumulator ${values.ACC}, negative flag ${state.negative ? "set" : "clear"}${ext ? `, stack pointer ${values.SP}, index register ${values.X}, interrupts ${ext.ie ? "on" : "off"}` : ""}.`}
     >
-      {BUSES.map(([a, b]) => {
+      {buses.map(([a, b]) => {
         const on = activity.transfers.some(
           (t) => (t.from === a && t.to === b) || (t.from === b && t.to === a),
         );
@@ -124,7 +150,7 @@ export function DatapathView() {
         );
       })}
 
-      {(Object.keys(BOXES) as Component[]).map((c) => {
+      {parts.map((c) => {
         const b = BOXES[c];
         const on = activity.active.has(c);
         const pointed = hover === c;
