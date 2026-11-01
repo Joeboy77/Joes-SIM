@@ -3,14 +3,16 @@
 Instruction set and dialect specifications. Every rule names its source; rules that cannot be
 confirmed from a public source are marked **unconfirmed** and reviewed before learners rely on them.
 
-| File                                           | What it covers                                                                                     |
-| ---------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| [classic.md](classic.md)                       | The machine: registers, instruction set, micro-steps, events, run loop                             |
-| [assembler.md](assembler.md)                   | Syntax, the two passes, diagnostics, the disassembler                                              |
-| [dialects/classic.md](dialects/classic.md)     | Classic dialect rules                                                                              |
-| [dialects/higginson.md](dialects/higginson.md) | Higginson-compatible dialect rules                                                                 |
-| [dialects/ocr.md](dialects/ocr.md)             | OCR (GCSE and A level) dialect rules                                                               |
-| [extended.md](extended.md)                     | The extended machine (Phase 6): stack, addressing modes, interrupts, devices. **Draft for review** |
+| File                                           | What it covers                                                                         |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------- |
+| [classic.md](classic.md)                       | The machine: registers, instruction set, micro-steps, events, run loop                 |
+| [assembler.md](assembler.md)                   | Syntax, the two passes, diagnostics, the disassembler                                  |
+| [dialects/classic.md](dialects/classic.md)     | Classic dialect rules                                                                  |
+| [dialects/higginson.md](dialects/higginson.md) | Higginson-compatible dialect rules                                                     |
+| [dialects/ocr.md](dialects/ocr.md)             | OCR (GCSE and A level) dialect rules                                                   |
+| [pipeline.md](pipeline.md)                     | The five-stage pipeline: stages, hazards, forwarding, prediction, hand-worked examples |
+| [cache.md](cache.md)                           | The cache: configuration, address split, policies, hand-worked examples                |
+| [extended.md](extended.md)                     | The extended machine (Phase 6): stack, addressing modes, interrupts, devices. Approved |
 
 ## Dialect differences at a glance
 
