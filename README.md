@@ -64,7 +64,9 @@ subroutines, indirect and indexed addressing, interrupts and six virtual devices
 classic program unchanged. The pipeline and cache views show how the same run would time on a
 five-stage pipeline and through a configurable cache. The multicore machine runs two to four
 Little Men on shared mailboxes, with seeded scheduling, a test-and-set lock and race detection. See [docs/specs](docs/specs/) for the exact
-rules of each dialect and machine.
+rules of each dialect and machine. Teachers can design their own machines at `/machines`, and
+`/riscv` runs a subset of RISC-V (RV32I) as RARS does: `scripts/check-rars.sh` compares the
+RISC-V test programs with a RARS jar you supply.
 
 ## Repository layout
 

@@ -49,14 +49,14 @@ shares it as a file or a link. The code is in `packages/engine/src/machines/cust
 }
 ```
 
-| Field          | Meaning                                                                                                                                           |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `memory`       | How many memory words, 10 to 1000                                                                                                                 |
-| `word`         | `digits`: 1 to 6 (1 to 16 in base 2). `base`: 10, 2 or 16. `signed`: whether values can be negative                                                                   |
-| `opcodeDigits` | Leading digits of an instruction word that hold the opcode. The rest hold the operand (usually an address)                                        |
-| `registers`    | Names (letters, digits, underscore). Four need a `role`: `pc`, `mar`, `mdr` and `ir`. Others are free (ACC, B, X…)                                |
-| `fetch`        | The micro-operations that fetch an instruction. Decoding is automatic: the IR splits into opcode and operand                                      |
-| `instructions` | `mnemonic` (2 to 6 letters), `opcode` (a number that fits the opcode digits), `operand` (whether it takes an address), `description`, and `micro` |
+| Field          | Meaning                                                                                                                                                                                                                                                                              |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `memory`       | How many memory words, 10 to 1000                                                                                                                                                                                                                                                    |
+| `word`         | `digits`: 1 to 6 (1 to 16 in base 2). `base`: 10, 2 or 16. `signed`: whether values can be negative                                                                                                                                                                                  |
+| `opcodeDigits` | Leading digits of an instruction word that hold the opcode. The rest hold the operand (usually an address)                                                                                                                                                                           |
+| `registers`    | Names (letters, digits, underscore). Four need a `role`: `pc`, `mar`, `mdr` and `ir`. Others are free (ACC, B, X…)                                                                                                                                                                   |
+| `fetch`        | The micro-operations that fetch an instruction. Decoding is automatic: the IR splits into opcode and operand                                                                                                                                                                         |
+| `instructions` | `mnemonic` (2 to 6 letters), `opcode` (a number that fits the opcode digits), `operand` (whether it takes an address), optional `fixedOperand` (it matches only this operand value, so instructions can share an opcode as LMC's INP 901 and OUT 902 do), `description`, and `micro` |
 
 **Instruction words.** An instruction word is `opcode × base^(digits − opcodeDigits) + operand`.
 
@@ -90,17 +90,19 @@ shares it as a file or a link. The code is in `packages/engine/src/machines/cust
 - **Z**: the last ALU result was 0.
 - **N**: the last ALU result's true value was below zero. On an unsigned machine this also
   holds when the result wrapped below zero, as LMC's negative flag does.
-- Copying into a register with `copy` sets Z and N from the value copied, as LDA does.
+- Copying into a register with no role (with `copy`, `input`, `inc` or `dec`) sets Z and N from
+  the value, as LDA does. Copies into the PC, MAR, MDR and IR leave the flags alone, so fetching
+  the next instruction never changes them.
 
 **`when`** is one of:
 
-| `when`         | The jump happens… |
-| -------------- | ----------------- |
-| `always`       | always            |
-| `zero`         | if Z is set       |
-| `not-zero`     | if Z is clear     |
-| `negative`     | if N is set       |
-| `not-negative` | if N is clear     |
+| `when`         | The jump happens…                                                                                           |
+| -------------- | ----------------------------------------------------------------------------------------------------------- |
+| `always`       | always                                                                                                      |
+| `zero`         | if Z is set and N is clear (a result that wrapped round from below zero is not zero, as in the Classic LMC) |
+| `not-zero`     | otherwise                                                                                                   |
+| `negative`     | if N is set                                                                                                 |
+| `not-negative` | if N is clear                                                                                               |
 
 Division and remainder by 0 give 0.
 
