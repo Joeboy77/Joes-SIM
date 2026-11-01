@@ -12,6 +12,7 @@ confirmed from a public source are marked **unconfirmed** and reviewed before le
 | [dialects/ocr.md](dialects/ocr.md)             | OCR (GCSE and A level) dialect rules                                                   |
 | [pipeline.md](pipeline.md)                     | The five-stage pipeline: stages, hazards, forwarding, prediction, hand-worked examples |
 | [cache.md](cache.md)                           | The cache: configuration, address split, policies, hand-worked examples                |
+| [multicore.md](multicore.md)                   | The multicore machine: cores, scheduling, TAS, race detection                          |
 | [extended.md](extended.md)                     | The extended machine (Phase 6): stack, addressing modes, interrupts, devices. Approved |
 
 ## Dialect differences at a glance
