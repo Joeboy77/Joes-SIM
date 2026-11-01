@@ -255,3 +255,11 @@ describe("the multicore machine", () => {
     expect(() => createState({ machine: "multicore", cores: 5 })).toThrow(RangeError);
   });
 });
+
+describe("analysing multicore programs", () => {
+  it("starts from every core and treats TAS as an instruction", async () => {
+    const { analyse } = await import("../../analysis/detectors");
+    const p = assemble(LOCKED, { machine: "multicore" }).program;
+    expect(p && analyse(p)).toEqual([]);
+  });
+});

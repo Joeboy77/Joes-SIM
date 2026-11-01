@@ -48,7 +48,16 @@ const pad = (a: number) => String(a).padStart(2, "0");
 export function analyse(program: Program, options: AnalyseOptions = {}): Finding[] {
   if (program.size === 0) return [];
   const extended = program.machine === "extended";
-  const cfg = buildCfg(program.memory, program.dialect, extended);
+  const multicore = program.machine === "multicore";
+  // On the multicore machine each core starts at its own label.
+  const entries = [
+    program.labels.core0?.address ?? 0,
+    ...[1, 2, 3].flatMap((i) => {
+      const at = program.labels[`core${i}`]?.address;
+      return at === undefined ? [] : [at];
+    }),
+  ];
+  const cfg = buildCfg(program.memory, program.dialect, extended, { multicore, entries });
   const dialect = getDialect(program.dialect);
   const ext = program.memory.map((v) => (extended ? decodeExt(v) : null));
   // On the extended machine 4xx words are not classic instructions.
@@ -190,7 +199,7 @@ export function analyse(program: Program, options: AnalyseOptions = {}): Finding
 
   // Parts of the program from which no path leads to a stop.
   if (!selfModifying && !usesInterrupts) {
-    findings.push(...cannotHalt(program.memory, program.dialect, extended, cfg, at));
+    findings.push(...cannotHalt(program.memory, program.dialect, extended, cfg, at, multicore));
   }
 
   if (options.inputs) findings.push(...inputChecks(program, cfg, decoded, options.inputs.length));
@@ -310,6 +319,7 @@ function cannotHalt(
   extended: boolean,
   cfg: ControlFlowGraph,
   at: (a: number) => { address: number; line?: number },
+  multicore: boolean,
 ): Finding[] {
   // Reverse search from every stopping point (HLT or an invalid instruction).
   const canStop = new Array<boolean>(MEMORY_SIZE).fill(false);
@@ -317,7 +327,7 @@ function cannotHalt(
   const stops: number[] = [];
   for (let a = 0; a < MEMORY_SIZE; a++) {
     if (!cfg.reachable[a]) continue;
-    const succ = successors(memory, a, dialect, extended);
+    const succ = successors(memory, a, dialect, extended, multicore);
     if (succ.length === 0) stops.push(a);
     succ.forEach((s) => (preds[s.to] as number[]).push(a));
   }
@@ -383,7 +393,13 @@ function inputChecks(
     const known = memo.get(a);
     if (known) return known;
     const here = decoded[a]?.mnemonic === "INP" ? 1 : 0;
-    const succ = successors(program.memory, a, program.dialect, program.machine === "extended");
+    const succ = successors(
+      program.memory,
+      a,
+      program.dialect,
+      program.machine === "extended",
+      program.machine === "multicore",
+    );
     let result: [number, number] = [here, here];
     if (succ.length) {
       const sub = succ.map((s) => count(s.to));

@@ -179,6 +179,18 @@ const EXT_PROGRAMS: { memory: Record<number, number>; keys?: KeyPress[]; dialect
   { memory: { 0: 440, 1: 444 } },
 ];
 
+/** Two cores take turns at TAS on one lock: the first finds it free, the second taken. */
+function multicoreCorpus() {
+  const r = assemble(
+    "        TAS lock\n        HLT\ncore1   TAS lock\n        HLT\nlock    DAT 0",
+    {
+      machine: "multicore",
+    },
+  );
+  const memory = r.program?.memory ?? [];
+  return executeState(createState({ memory, machine: "multicore", starts: [0, 3] }));
+}
+
 function extCorpus() {
   return EXT_PROGRAMS.flatMap((p) => {
     const memory = Array.from({ length: 100 }, (_, i) => p.memory[i] ?? 0);
@@ -294,11 +306,31 @@ describe("narration", () => {
     });
   });
 
+  it("tells whether TAS found the lock free or taken", () => {
+    const tas = multicoreCorpus().filter((ins) =>
+      ins.steps.some((s) => s.events.some((e) => e.type === "decode" && e.mnemonic === "TAS")),
+    );
+    const texts = tas.map(
+      (ins) =>
+        narrateInstruction(ins.steps, ins.afters.at(-1) as MachineState, { level: "beginner" })
+          ?.text,
+    );
+    expect(texts[0]).toMatch(/It was 0: the lock was free/);
+    expect(texts[1]).toMatch(/It was already 1: another core has the lock/);
+    for (const ins of tas) {
+      ins.steps.forEach((s, i) =>
+        expectWellFormed(narrateStep(s, ins.afters[i] as MachineState, { level: "technical" })),
+      );
+    }
+  });
+
   it("uses every message in the catalogue, at both levels", () => {
     for (const level of LEVELS) {
       const used = new Set<string>();
       for (const dialect of [...DIALECT_IDS, "extended" as const]) {
-        for (const ins of dialect === "extended" ? extCorpus() : corpus(dialect)) {
+        const instructions =
+          dialect === "extended" ? [...extCorpus(), ...multicoreCorpus()] : corpus(dialect);
+        for (const ins of instructions) {
           const after = ins.afters.at(-1) as MachineState;
           narrateInstruction(ins.steps, after, { level })?.keys.forEach((k) => used.add(k));
           ins.steps.forEach((s, i) => {

@@ -59,9 +59,12 @@ export function successors(
   address: number,
   dialect: DialectId,
   extended = false,
+  multicore = false,
 ): Successor[] {
   const word = memory[address] as number;
   const next = (address + 1) % MEMORY_SIZE;
+  // TAS (multicore): two mailboxes, then carry on.
+  if (multicore && word === 460) return [{ to: (address + 2) % MEMORY_SIZE, kind: "fallthrough" }];
   const ext = extended ? decodeExt(word) : null;
   if (ext) {
     const after = (address + ext.words) % MEMORY_SIZE;
@@ -101,19 +104,29 @@ function returns(memory: readonly number[], address: number, extended: boolean):
   return m === "RET" || m === "RTI";
 }
 
+export interface CfgOptions {
+  /** The multicore machine: TAS is an instruction. */
+  readonly multicore?: boolean;
+  /** Where execution starts: 00, plus each core's start on the multicore machine. */
+  readonly entries?: readonly number[];
+}
+
 export function buildCfg(
   memory: readonly number[],
   dialect: DialectId,
   extended = false,
+  options: CfgOptions = {},
 ): ControlFlowGraph {
+  const multicore = options.multicore ?? false;
+  const entries = options.entries ?? [0];
   const reachable = new Array<boolean>(MEMORY_SIZE).fill(false);
-  const leaders = new Set<number>([0]);
-  const stack = [0];
+  const leaders = new Set<number>(entries);
+  const stack = [...entries];
   while (stack.length) {
     const a = stack.pop() as number;
     if (reachable[a]) continue;
     reachable[a] = true;
-    const succ = successors(memory, a, dialect, extended);
+    const succ = successors(memory, a, dialect, extended, multicore);
     if (succ.length !== 1 || succ[0]?.kind === "jump") succ.forEach((s) => leaders.add(s.to));
     succ.forEach((s) => stack.push(s.to));
   }
@@ -129,7 +142,7 @@ export function buildCfg(
     while (true) {
       addresses.push(a);
       blockOf[a] = id;
-      const succ = successors(memory, a, dialect, extended);
+      const succ = successors(memory, a, dialect, extended, multicore);
       if (succ.length === 0) {
         exit = returns(memory, a, extended)
           ? "return"
@@ -160,7 +173,7 @@ export function buildCfg(
   const edges: CfgEdge[] = [];
   for (const block of blocks) {
     const last = block.addresses[block.addresses.length - 1] as number;
-    for (const s of successors(memory, last, dialect, extended)) {
+    for (const s of successors(memory, last, dialect, extended, multicore)) {
       const to = blockOf[s.to];
       if (to !== null && to !== undefined) edges.push({ from: block.id, to, kind: s.kind });
     }

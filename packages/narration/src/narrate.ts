@@ -478,6 +478,11 @@ export function narrateInstruction(
         const device = word(`name-${w.device}`, options);
         return [["summary-PUT", { instruction, port: pad(w.port), device, acc }]];
       }
+      case "TAS": {
+        const read = ev.filter((e) => e.type === "memory-read").at(-1);
+        const address = read?.type === "memory-read" ? pad(read.address) : "??";
+        return [[acc === 0 ? "summary-TAS-free" : "summary-TAS-taken", { instruction, address }]];
+      }
       case "INT":
         return [];
     }

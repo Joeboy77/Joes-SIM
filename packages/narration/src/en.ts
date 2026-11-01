@@ -140,6 +140,7 @@ const beginner = {
   "meaning-STA-indexed": "store the accumulator in a table, at the position in the index register",
   "meaning-ADD-indexed": "add a value from a table, at the position in the index register",
   "meaning-SUB-indexed": "subtract a value from a table, at the position in the index register",
+  "meaning-TAS": "test and set a lock: read it and make it 1, both at once",
 
   // A whole instruction.
   "summary-LDA":
@@ -226,6 +227,10 @@ const beginner = {
     "The instruction is {instruction}. The table starts at {base} and the [[X]] is {x}, so the Little Man adds the value in mailbox {address}. The [[ACC]] is now {acc}.",
   "summary-SUB-indexed":
     "The instruction is {instruction}. The table starts at {base} and the [[X]] is {x}, so the Little Man subtracts the value in mailbox {address}. The [[ACC]] is now {acc}.",
+  "summary-TAS-free":
+    "The instruction is {instruction}, so the Little Man reads lock mailbox {address} and sets it to 1 in one go. It was 0: the lock was free, and now it is his.",
+  "summary-TAS-taken":
+    "The instruction is {instruction}, so the Little Man reads lock mailbox {address} and sets it to 1 in one go. It was already 1: another core has the lock, so he must try again.",
   "summary-INT":
     "The {source} needs attention, so the Little Man saves the [[PC]], [[ACC]] and flag on the stack and runs the interrupt handler at mailbox {handler}.",
   "suffix-timer": "The timer ticks: a timer interrupt is waiting.",
@@ -349,6 +354,7 @@ const technical: Record<MessageKey, string> = {
   "meaning-STA-indexed": "STA indexed",
   "meaning-ADD-indexed": "ADD indexed",
   "meaning-SUB-indexed": "SUB indexed",
+  "meaning-TAS": "TAS (address in the next word)",
 
   "summary-LDA": "LDA {address}: [[ACC]] ← memory[{address}] = {acc}.",
   "summary-ADD": "ADD {address}: [[ACC]] ← {a} + {b} = {acc}.",
@@ -394,6 +400,8 @@ const technical: Record<MessageKey, string> = {
   "summary-STA-indexed": "STA {base},X: memory[{base} + {x}] ← [[ACC]] ({acc}).",
   "summary-ADD-indexed": "ADD {base},X: [[ACC]] ← + memory[{base} + {x}] = {acc}.",
   "summary-SUB-indexed": "SUB {base},X: [[ACC]] ← − memory[{base} + {x}] = {acc}.",
+  "summary-TAS-free": "TAS {address}: ACC ← 0 (lock free); memory[{address}] ← 1.",
+  "summary-TAS-taken": "TAS {address}: ACC ← 1 (lock taken); memory[{address}] ← 1.",
   "summary-INT": "Interrupt ({source}): push [[PC]], [[ACC]], flag; IE ← 0; [[PC]] ← {handler}.",
   "suffix-timer": "Timer tick: interrupt pending.",
   "suffix-key": "Key '{char}' buffered.",
