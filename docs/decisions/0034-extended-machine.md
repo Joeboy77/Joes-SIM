@@ -28,3 +28,21 @@ The full design is in [docs/specs/extended.md](../specs/extended.md). In short:
 
 The draft was reviewed on 1 November 2026 and approved with the draft's answer to each open
 question.
+
+## Changes made while building
+
+The specification records each one where it applies.
+
+- **The keyboard interrupt stays pending while keys wait in the buffer.** The draft raised it
+  once per key, so a handler that read one key lost the next if two were typed quickly.
+- **No loop is called infinite while interrupts are on.** A timer-driven program can repeat its
+  whole state exactly (a dot wrapping round the display), yet a key could change it at any
+  moment. Playback would otherwise have stopped such programs as stuck.
+- **WAIT idles by running again** while the timer counts, so idle time shows up as cycles and the
+  timer keeps ticking.
+- **One set of semantics.** The fast run loop runs extended instructions and interrupt entry
+  through the micro-step machine, so the two cannot disagree; only WAIT's idling has its own
+  fast path, checked by the same property tests. A million timer-driven instructions run in
+  about 1.5 seconds.
+- **Static checks are simpler than drafted.** "PUSH with no POP" replaced "PUSH and POP balance on
+  every path", which flagged correct recursive programs.

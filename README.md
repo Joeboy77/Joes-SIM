@@ -13,15 +13,16 @@ the University of Ghana, Legon, and then for students, teachers and self-learner
 
 ## Status
 
-| Phase | What it delivers                                                                      | Status      |
-| ----- | ------------------------------------------------------------------------------------- | ----------- |
-| 0     | Foundation: monorepo, app shell, themes, tests, CI                                    | Done        |
-| 1     | Engine, assembler and dialects                                                        | Done        |
-| 2     | Core simulator interface                                                              | Done        |
-| 3     | Understanding tools (narration, time travel, traces)                                  | Done        |
-| 4     | Practice, lessons and saving                                                          | Done        |
-| 5     | Sharing, offline, translation and public launch                                       | Done        |
-| 6–10  | Extended machine, pipeline and cache, multicore, compiler, custom machines and RISC-V | Not started |
+| Phase | What it delivers                                                               | Status      |
+| ----- | ------------------------------------------------------------------------------ | ----------- |
+| 0     | Foundation: monorepo, app shell, themes, tests, CI                             | Done        |
+| 1     | Engine, assembler and dialects                                                 | Done        |
+| 2     | Core simulator interface                                                       | Done        |
+| 3     | Understanding tools (narration, time travel, traces)                           | Done        |
+| 4     | Practice, lessons and saving                                                   | Done        |
+| 5     | Sharing, offline, translation and public launch                                | Done        |
+| 6     | Extended machine: stack, subroutines, addressing modes, interrupts and devices | Done        |
+| 7–10  | Pipeline and cache, multicore, compiler, custom machines and RISC-V            | Not started |
 
 ## Getting started
 
