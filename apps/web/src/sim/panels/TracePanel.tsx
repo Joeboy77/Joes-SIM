@@ -11,7 +11,22 @@ import { useId, useMemo, useState } from "react";
 import { useSim, useSimState } from "../SimProvider";
 import { useTrace } from "../useTrace";
 
-type FixedColumn = "step" | "address" | "instruction" | "acc" | "pc" | "flag" | "input" | "output";
+type FixedColumn =
+  | "step"
+  | "address"
+  | "instruction"
+  | "acc"
+  | "pc"
+  | "flag"
+  | "input"
+  | "output"
+  | "sp"
+  | "x"
+  | "ie"
+  | "device";
+
+/** Columns for the extended machine only. */
+const EXTENDED_COLUMNS = new Set<FixedColumn>(["sp", "x", "ie", "device"]);
 
 interface Column {
   readonly id: string;
@@ -30,6 +45,10 @@ const FIXED: { id: FixedColumn; label: string; fillable: boolean }[] = [
   { id: "flag", label: "Negative", fillable: true },
   { id: "input", label: "Input", fillable: false },
   { id: "output", label: "Output", fillable: true },
+  { id: "sp", label: "SP", fillable: true },
+  { id: "x", label: "X", fillable: true },
+  { id: "ie", label: "Interrupts", fillable: false },
+  { id: "device", label: "Device", fillable: false },
 ];
 const DEFAULT_FIXED: FixedColumn[] = ["step", "instruction", "acc", "pc", "output"];
 const MAX_SHOWN = 1000;
@@ -38,8 +57,12 @@ const FILL_ROWS = 200;
 const pad = (a: number) => String(a).padStart(2, "0");
 
 /** "STA first" rather than "STA 06", when the source used a label. */
-function instructionText(row: TraceRow, program: Program | null): string {
-  const d = disassembleWord(row.instruction, program?.dialect ?? "classic");
+function instructionText(row: TraceRow, program: Program | null, trace: Trace): string {
+  if (row.mnemonic === "INT") return `interrupt (${row.interrupt ?? "device"})`;
+  const d = disassembleWord(row.instruction, program?.dialect ?? "classic", {
+    machine: program?.machine ?? "classic",
+    next: trace.initial.memory[(row.address + 1) % 100] ?? 0,
+  });
   if (d.kind !== "instruction" || d.address === undefined || !program) return d.text;
   const label = Object.entries(program.labels).find(([, v]) => v.address === d.address)?.[0];
   return label ? `${d.text.split(" ")[0]} ${label}` : d.text;
@@ -60,7 +83,7 @@ function buildColumns(
         case "address":
           return pad(row.address);
         case "instruction":
-          return instructionText(row, program);
+          return instructionText(row, program, trace);
         case "acc":
           return String(row.acc);
         case "pc":
@@ -72,6 +95,16 @@ function buildColumns(
         case "output":
           if (!row.output) return "";
           return row.output.kind === "char" ? row.output.char : String(row.output.value);
+        case "sp":
+          return row.sp === undefined ? "" : String(row.sp);
+        case "x":
+          return row.x === undefined ? "" : String(row.x);
+        case "ie":
+          return row.ie ? "on" : "";
+        case "device":
+          return row.device
+            ? `${row.device.direction === "read" ? "GET" : "PUT"} ${pad(row.device.port)}: ${row.device.value}`
+            : "";
       }
     },
   }));
@@ -199,7 +232,7 @@ export function TracePanel() {
         </h2>
         <fieldset className="flex flex-wrap gap-x-3 gap-y-1 text-sm">
           <legend className="sr-only">Columns</legend>
-          {FIXED.map((c) => (
+          {FIXED.filter((c) => state.ext || !EXTENDED_COLUMNS.has(c.id)).map((c) => (
             <label key={c.id} className="inline-flex min-h-11 items-center gap-1">
               <input
                 type="checkbox"
