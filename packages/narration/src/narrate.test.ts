@@ -4,6 +4,8 @@ import {
   createState,
   step,
   type DialectId,
+  type AnyMnemonic,
+  type KeyPress,
   type MachineState,
   type MicroStep,
   type Mnemonic,
@@ -30,7 +32,11 @@ function execute(
 ) {
   const r = assemble(source, { dialect });
   if (!r.program) throw new Error(`${source}: ${JSON.stringify(r.diagnostics)}`);
-  let s: MachineState = { ...createState({ memory: r.program.memory, inputs, dialect }), ...start };
+  return executeState({ ...createState({ memory: r.program.memory, inputs, dialect }), ...start });
+}
+
+function executeState(initial: MachineState) {
+  let s = initial;
   const instructions: Instruction[] = [];
   let current: Instruction = { steps: [], afters: [] };
   for (let i = 0; i < 500; i++) {
@@ -83,6 +89,110 @@ function corpus(dialect: DialectId) {
   return programs.flatMap((p) => execute(p.source, dialect, p.inputs, p.start));
 }
 
+/** Extended machine programs, as machine code, covering every new instruction and message. */
+const EXT_PROGRAMS: { memory: Record<number, number>; keys?: KeyPress[]; dialect?: DialectId }[] = [
+  // CALL 05; OUT; HLT. 05 PUSH; POP; RET
+  { memory: { 0: 412, 1: 5, 2: 902, 3: 0, 5: 410, 6: 411, 7: 413 } },
+  // LDX 20; INX; DEX; STX 21; LDA 22,X; STA 22,X; ADD 22,X; SUB 22,X; HLT
+  {
+    memory: {
+      0: 414,
+      1: 20,
+      2: 416,
+      3: 417,
+      4: 415,
+      5: 21,
+      6: 430,
+      7: 22,
+      8: 431,
+      9: 22,
+      10: 432,
+      11: 22,
+      12: 433,
+      13: 22,
+      14: 0,
+      20: 1,
+      23: 7,
+    },
+  },
+  // LDA @20; STA @20; ADD @20; SUB @20; HLT
+  {
+    memory: { 0: 420, 1: 20, 2: 421, 3: 20, 4: 422, 5: 20, 6: 423, 7: 20, 8: 0, 20: 21, 21: 5 },
+  },
+  // Timer interrupts twice, then DI and a beep.
+  {
+    memory: {
+      0: 443,
+      1: 10,
+      2: 530,
+      3: 451,
+      4: 20,
+      5: 440,
+      6: 444,
+      7: 606,
+      10: 450,
+      11: 50,
+      12: 531,
+      13: 132,
+      14: 331,
+      15: 233,
+      16: 719,
+      17: 442,
+      19: 441,
+      20: 534,
+      21: 451,
+      22: 40,
+      23: 0,
+      30: 3,
+      31: 0,
+      32: 1,
+      33: 2,
+      34: 49,
+    },
+  },
+  // WAIT is woken by a key; the handler echoes it to the console and the seven-segment display.
+  {
+    memory: {
+      0: 443,
+      1: 20,
+      2: 440,
+      3: 444,
+      4: 0,
+      20: 450,
+      21: 2,
+      22: 451,
+      23: 1,
+      24: 451,
+      25: 30,
+      26: 442,
+    },
+    keys: [{ cycle: 50, key: 65 }],
+  },
+  // Nine keys arrive at once: the ninth does not fit in the buffer. Then PUT 12 fills the display.
+  {
+    memory: { 0: 416, 1: 451, 2: 12, 3: 0 },
+    keys: Array.from({ length: 9 }, () => ({ cycle: 1, key: 66 })),
+  },
+  // POP with an empty stack.
+  { memory: { 0: 411 } },
+  // EI; WAIT with nothing that could wake it.
+  { memory: { 0: 440, 1: 444 } },
+];
+
+function extCorpus() {
+  return EXT_PROGRAMS.flatMap((p) => {
+    const memory = Array.from({ length: 100 }, (_, i) => p.memory[i] ?? 0);
+    return executeState(
+      createState({
+        memory,
+        machine: "extended",
+        dialect: p.dialect ?? "classic",
+        keys: p.keys ?? [],
+      }),
+    );
+  });
+}
+
 function expectWellFormed(n: Narration) {
   expect(n.text).not.toMatch(/\{|\}|\[\[|\]\]|undefined|NaN|null/);
   expect(n.text).toMatch(/[.!]$/);
@@ -109,7 +219,7 @@ describe("narration", () => {
 
       for (const level of LEVELS) {
         it(`narrates every instruction it supports, at the ${level} level`, () => {
-          const narrated = new Set<Mnemonic>();
+          const narrated = new Set<AnyMnemonic>();
           for (const ins of instructions) {
             const after = ins.afters.at(-1) as MachineState;
             const whole = narrateInstruction(ins.steps, after, { level });
@@ -132,11 +242,63 @@ describe("narration", () => {
     });
   }
 
+  describe("on the extended machine", () => {
+    const instructions = extCorpus();
+    for (const level of LEVELS) {
+      it(`narrates every new instruction and every micro-step, at the ${level} level`, () => {
+        const narrated = new Set<string>();
+        for (const ins of instructions) {
+          const after = ins.afters.at(-1) as MachineState;
+          const whole = narrateInstruction(ins.steps, after, { level });
+          expect(whole).not.toBeNull();
+          if (whole) expectWellFormed(whole);
+          ins.steps.forEach((s, i) =>
+            expectWellFormed(narrateStep(s, ins.afters[i] as MachineState, { level })),
+          );
+          for (const e of ins.steps.flatMap((s) => s.events)) {
+            if (e.type === "decode") narrated.add(e.mnemonic);
+          }
+        }
+        for (const m of [
+          "PUSH",
+          "POP",
+          "CALL",
+          "RET",
+          "LDX",
+          "STX",
+          "INX",
+          "DEX",
+          "EI",
+          "DI",
+          "RTI",
+          "VEC",
+          "WAIT",
+          "GET",
+          "PUT",
+        ]) {
+          expect(narrated).toContain(m);
+        }
+      });
+    }
+
+    it("tells the story of an interrupt in one sentence", () => {
+      const entry = instructions.find((ins) =>
+        ins.steps.some((s) => s.op === "interrupt-accept"),
+      ) as Instruction;
+      const n = narrateInstruction(entry.steps, entry.afters.at(-1) as MachineState, {
+        level: "beginner",
+      });
+      expect(n?.text).toBe(
+        "The timer needs attention, so the Little Man saves the program counter, accumulator and flag on the stack and runs the interrupt handler at mailbox 10.",
+      );
+    });
+  });
+
   it("uses every message in the catalogue, at both levels", () => {
     for (const level of LEVELS) {
       const used = new Set<string>();
-      for (const dialect of DIALECT_IDS) {
-        for (const ins of corpus(dialect)) {
+      for (const dialect of [...DIALECT_IDS, "extended" as const]) {
+        for (const ins of dialect === "extended" ? extCorpus() : corpus(dialect)) {
           const after = ins.afters.at(-1) as MachineState;
           narrateInstruction(ins.steps, after, { level })?.keys.forEach((k) => used.add(k));
           ins.steps.forEach((s, i) => {
@@ -144,7 +306,14 @@ describe("narration", () => {
               used.add(k),
             );
             const d = s.events.find((e) => e.type === "decode");
-            if (d?.type === "decode") used.add(`meaning-${d.mnemonic}`);
+            if (d?.type === "decode") {
+              used.add(d.mode ? `meaning-${d.mnemonic}-${d.mode}` : `meaning-${d.mnemonic}`);
+            }
+            for (const e of s.events) {
+              if (e.type === "device-read" || e.type === "device-write")
+                used.add(`name-${e.device}`);
+              if (e.type === "interrupt-enter") used.add(`name-source-${e.source}`);
+            }
           });
         }
       }

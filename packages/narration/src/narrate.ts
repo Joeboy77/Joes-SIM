@@ -34,6 +34,10 @@ const COMPONENTS = new Set<string>([
   "CONTROL",
   "INPUT",
   "OUTPUT",
+  "SP",
+  "X",
+  "IV",
+  "DEVICE",
 ]);
 
 function find<T extends EngineEvent["type"]>(
@@ -108,14 +112,34 @@ function compose(parts: readonly Part[], options: NarrateOptions): Narration {
 }
 
 const toChar = (item: OutputItem) => (item.kind === "char" ? item.char : String(item.value));
+const keyChar = (key: number) => (key === 10 ? "Enter" : String.fromCharCode(key));
 
-/** Suffixes for a wrapped result and a change of the negative flag. */
+/** A message with no values, as plain text: the name of a device, for example. */
+function word(key: MessageKey, options: NarrateOptions): string {
+  const catalogue = options.catalogue ?? en;
+  return catalogue.messages[options.level][key];
+}
+
+/**
+ * Suffixes for a wrapped result, a change of the negative flag, and (on the extended machine)
+ * what happened at the end of the instruction: a timer tick, a key arriving, a note played.
+ */
 function suffixes(events: readonly EngineEvent[]): Part[] {
   const parts: Part[] = [];
   const alu = find(events, "alu");
-  if (alu?.wrapped) parts.push(["suffix-wrapped", { raw: alu.raw, result: alu.result }]);
+  if (alu?.wrapped && alu.register !== "X") {
+    parts.push(["suffix-wrapped", { raw: alu.raw, result: alu.result }]);
+  }
   const flag = find(events, "flag-change");
   if (flag) parts.push([flag.value ? "suffix-flag-set" : "suffix-flag-cleared", {}]);
+  const beep = find(events, "beep");
+  if (beep) parts.push(["suffix-beep", { note: beep.note }]);
+  for (const e of events) {
+    if (e.type === "interrupt-raised" && e.source === "timer") parts.push(["suffix-timer", {}]);
+    if (e.type === "key") {
+      parts.push([e.dropped ? "suffix-key-dropped" : "suffix-key", { char: keyChar(e.key) }]);
+    }
+  }
   return parts;
 }
 
@@ -140,6 +164,8 @@ export function narrateStep(
   options: NarrateOptions,
 ): Narration {
   const ev = step.events;
+  const error = step.op === "decode" ? undefined : find(ev, "error");
+  if (error) return compose([["error", { message: error.error.message }]], options);
   const parts = ((): Part[] => {
     switch (step.op) {
       case "fetch-address":
@@ -157,8 +183,11 @@ export function narrateStep(
         if (error) return [["decode-invalid", { instruction: formatValue(error.error.value) }]];
         const d = need(ev, "decode");
         const catalogue = options.catalogue ?? en;
+        const meaningKey = (
+          d.mode ? `meaning-${d.mnemonic}-${d.mode}` : `meaning-${d.mnemonic}`
+        ) as MessageKey;
         const meaning = fill(
-          catalogue.messages[options.level][`meaning-${d.mnemonic}`],
+          catalogue.messages[options.level][meaningKey],
           { address: pad(d.address) },
           catalogue.terms[options.level],
         )
@@ -167,6 +196,10 @@ export function narrateStep(
         return [["decode", { instruction: formatValue(d.instruction), meaning }]];
       }
       case "operand-address":
+        // Classic instructions take the address from the IR; extended ones from the MDR.
+        if (need(ev, "transfer").from === "MDR") {
+          return [["operand-address-ext", { address: pad(need(ev, "transfer").value) }]];
+        }
         return [["operand-address", { address: pad(after.mar) }]];
       case "operand-read": {
         const read = need(ev, "memory-read");
@@ -185,12 +218,17 @@ export function narrateStep(
       case "load-acc":
         return [["load-acc", { value: after.acc }], ...suffixes(ev)];
       case "store-mdr":
+        if (need(ev, "transfer").from === "X") return [["store-mdr-x", { value: after.mdr }]];
         return [["store-mdr", { value: after.mdr }]];
       case "store-write": {
         const w = need(ev, "memory-write");
         return [["store-write", { value: w.value, address: pad(w.address), previous: w.previous }]];
       }
       case "branch": {
+        const call = find(ev, "call");
+        if (call) return [["call", { target: pad(call.target) }]];
+        const back = find(ev, "return");
+        if (back) return [["return", { target: pad(back.target) }]];
         const b = need(ev, "branch");
         return [
           [
@@ -211,9 +249,96 @@ export function narrateStep(
       }
       case "halt":
         return [["halt", {}]];
+      case "operand-fetch-address":
+        return [["operand-fetch-address", { address: pad(need(ev, "transfer").value) }]];
+      case "operand-fetch-read": {
+        const read = need(ev, "memory-read");
+        return [
+          [
+            "operand-fetch-read",
+            {
+              address: pad(read.address),
+              value: read.value,
+              next: pad(need(ev, "pc-increment").value),
+            },
+          ],
+        ];
+      }
+      case "indirect-address":
+        return [["indirect-address", { address: pad(need(ev, "transfer").value) }]];
+      case "indirect-read": {
+        const read = need(ev, "memory-read");
+        return [["indirect-read", { address: pad(read.address), value: read.value }]];
+      }
+      case "index-add": {
+        const ea = need(ev, "effective-address");
+        return [["index-add", { x: ea.via, operand: pad(ea.operand), address: pad(ea.address) }]];
+      }
+      case "load-x":
+        return [["load-x", { value: need(ev, "transfer").value }]];
+      case "index-change": {
+        const alu = need(ev, "alu");
+        return [[alu.operation === "add" ? "index-up" : "index-down", { result: alu.result }]];
+      }
+      case "stack-push": {
+        const p = need(ev, "stack-push");
+        const params = { address: pad(p.address), value: p.value };
+        if (p.reason === "interrupt") return [[`stack-save-${p.saves ?? "PC"}`, params]];
+        return [[p.reason === "call" ? "stack-push-call" : "stack-push", params]];
+      }
+      case "stack-pop": {
+        const p = need(ev, "stack-pop");
+        const params = { address: pad(p.address), value: p.value, sp: p.sp };
+        if (p.reason === "interrupt-return")
+          return [[`stack-restore-${p.restores ?? "PC"}`, params]];
+        return [[p.reason === "return" ? "stack-pop-return" : "stack-pop", params]];
+      }
+      case "interrupt-enable": {
+        const back = find(ev, "interrupt-return");
+        if (back) return [["interrupts-on-again", { target: pad(back.target) }]];
+        return [[need(ev, "register-change").value ? "interrupts-on" : "interrupts-off", {}]];
+      }
+      case "set-vector":
+        return [["set-vector", { address: pad(need(ev, "transfer").value) }]];
+      case "wait":
+        return [[need(ev, "wait").idle ? "wait-idle" : "wait-done", {}]];
+      case "device-read": {
+        const r = need(ev, "device-read");
+        return [
+          [
+            "device-read",
+            { port: pad(r.port), device: word(`name-${r.device}`, options), value: r.value },
+          ],
+        ];
+      }
+      case "device-write": {
+        const w = need(ev, "device-write");
+        return [
+          [
+            "device-write",
+            { port: pad(w.port), device: word(`name-${w.device}`, options), value: w.value },
+          ],
+        ];
+      }
+      case "interrupt-accept": {
+        const e = need(ev, "interrupt-enter");
+        return [
+          [
+            "interrupt-enter",
+            { source: word(`name-source-${e.source}`, options), from: pad(e.from) },
+          ],
+        ];
+      }
+      case "interrupt-jump":
+        return [["interrupt-jump", { handler: pad(need(ev, "transfer").value) }]];
     }
   })();
-  return compose(parts, options);
+  return compose([...parts, ...(isStepWithSuffixes(step) ? suffixes(ev) : [])], options);
+}
+
+/** Steps whose own message already covers the flag and wrapping get their suffixes there. */
+function isStepWithSuffixes(step: MicroStep): boolean {
+  return !["alu", "load-acc", "input"].includes(step.op);
 }
 
 /**
@@ -229,13 +354,29 @@ export function narrateInstruction(
   const ev = steps.flatMap((s) => s.events);
   const error = find(ev, "error");
   if (error) {
-    const { address, value } = error.error;
+    const { address, value, code, message } = error.error;
+    if (code !== "invalid-instruction") {
+      return compose([["summary-error", { instruction: formatValue(value), message }]], options);
+    }
     return compose(
       [["summary-invalid", { address: pad(address), instruction: formatValue(value) }]],
       options,
     );
   }
   const d = find(ev, "decode");
+  const entered = find(ev, "interrupt-enter");
+  if (!d && entered && find(ev, "instruction-complete")) {
+    return compose(
+      [
+        [
+          "summary-INT",
+          { source: word(`name-source-${entered.source}`, options), handler: pad(entered.handler) },
+        ],
+        ...suffixes(ev),
+      ],
+      options,
+    );
+  }
   if (!d) return null;
   const instruction = formatValue(d.instruction);
   const address = pad(d.address);
@@ -243,8 +384,31 @@ export function narrateInstruction(
   if (d.mnemonic === "INP" && find(ev, "input-needed") && !find(ev, "input")) {
     return compose([["summary-INP-waiting", { instruction }]], options);
   }
+  if (d.mnemonic === "WAIT" && after.status === "waiting-interrupt") {
+    return compose([["summary-WAIT-waiting", { instruction }]], options);
+  }
   if (!find(ev, "instruction-complete")) return null;
+  const ext = after.ext;
+  const operand = pad(ext?.operand ?? 0);
+  const x = ext?.x ?? 0;
   const parts = ((): Part[] => {
+    if (d.mode) {
+      const ea = need(ev, "effective-address");
+      const key = `summary-${d.mnemonic}-${d.mode}` as MessageKey;
+      return [
+        [
+          key,
+          {
+            instruction,
+            pointer: pad(ea.operand),
+            base: pad(ea.operand),
+            x: ea.via,
+            address: pad(ea.address),
+            acc,
+          },
+        ],
+      ];
+    }
     switch (d.mnemonic) {
       case "LDA":
       case "STA":
@@ -273,6 +437,49 @@ export function narrateInstruction(
         const { item } = need(ev, "output");
         return [["summary-OTC", { instruction, acc, char: toChar(item) }]];
       }
+      case "PUSH":
+        return [
+          ["summary-PUSH", { instruction, acc, address: pad(need(ev, "stack-push").address) }],
+        ];
+      case "POP":
+        return [["summary-POP", { instruction, acc }]];
+      case "CALL": {
+        const c = need(ev, "call");
+        return [
+          ["summary-CALL", { instruction, target: pad(c.target), back: pad(c.returnAddress) }],
+        ];
+      }
+      case "RET":
+        return [["summary-RET", { instruction, target: pad(need(ev, "return").target) }]];
+      case "LDX":
+      case "STX":
+        return [[`summary-${d.mnemonic}`, { instruction, address: operand, x }]];
+      case "INX":
+      case "DEX":
+        return [[`summary-${d.mnemonic}`, { instruction, x }]];
+      case "EI":
+      case "DI":
+        return [[`summary-${d.mnemonic}`, { instruction }]];
+      case "RTI":
+        return [["summary-RTI", { instruction, target: pad(after.pc) }]];
+      case "VEC":
+        return [["summary-VEC", { instruction, address: operand }]];
+      case "WAIT":
+        return [
+          [need(ev, "wait").idle ? "summary-WAIT-idle" : "summary-WAIT-done", { instruction }],
+        ];
+      case "GET": {
+        const r = need(ev, "device-read");
+        const device = word(`name-${r.device}`, options);
+        return [["summary-GET", { instruction, port: pad(r.port), device, acc }]];
+      }
+      case "PUT": {
+        const w = need(ev, "device-write");
+        const device = word(`name-${w.device}`, options);
+        return [["summary-PUT", { instruction, port: pad(w.port), device, acc }]];
+      }
+      case "INT":
+        return [];
     }
   })();
   return compose([...parts, ...suffixes(ev)], options);
