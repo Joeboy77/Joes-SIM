@@ -13,5 +13,8 @@
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run --passWithNoTests",
     "test:coverage": "vitest run --coverage --passWithNoTests"
+  },
+  "dependencies": {
+    "@joes-sim/engine": "workspace:*"
   }
 }
