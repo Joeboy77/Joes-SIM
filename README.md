@@ -7,22 +7,27 @@ and interrupts, pipelines, caches, multiple cores and a RISC-V bridge.
 It is first used as the practice tool for DCIT 207 (Computer Organization and Architecture) at
 the University of Ghana, Legon, and then for students, teachers and self-learners anywhere.
 
-- **No accounts.** Open the site and start. Work saves on your device.
+- **No accounts.** Open the site and start. Work saves on your device. Even the optional
+  leaderboards and gallery need only a nickname.
 - **Offline and light.** Built to run well on low-end phones and slow connections.
 - **Learning first.** Every screen answers: what is the machine doing right now, and why?
 
 ## Status
 
-| Phase | What it delivers                                                               | Status      |
-| ----- | ------------------------------------------------------------------------------ | ----------- |
-| 0     | Foundation: monorepo, app shell, themes, tests, CI                             | Done        |
-| 1     | Engine, assembler and dialects                                                 | Done        |
-| 2     | Core simulator interface                                                       | Done        |
-| 3     | Understanding tools (narration, time travel, traces)                           | Done        |
-| 4     | Practice, lessons and saving                                                   | Done        |
-| 5     | Sharing, offline, translation and public launch                                | Done        |
-| 6     | Extended machine: stack, subroutines, addressing modes, interrupts and devices | Done        |
-| 7–10  | Pipeline and cache, multicore, compiler, custom machines and RISC-V            | Not started |
+| Phase | What it delivers                                                               | Status |
+| ----- | ------------------------------------------------------------------------------ | ------ |
+| 0     | Foundation: monorepo, app shell, themes, tests, CI                             | Done   |
+| 1     | Engine, assembler and dialects                                                 | Done   |
+| 2     | Core simulator interface                                                       | Done   |
+| 3     | Understanding tools (narration, time travel, traces)                           | Done   |
+| 4     | Practice, lessons and saving                                                   | Done   |
+| 5     | Sharing, offline, translation and public launch                                | Done   |
+| 6     | Extended machine: stack, subroutines, addressing modes, interrupts and devices | Done   |
+| 7     | Pipelining and caches                                                          | Done   |
+| 8     | Multicore, concurrency and race detection                                      | Done   |
+| 9     | The Little Language compiler                                                   | Done   |
+| 10    | Custom machines and the RISC-V bridge                                          | Done   |
+| 11    | Optional community features: leaderboards, gallery, short links                | Done   |
 
 ## Getting started
 
@@ -54,6 +59,11 @@ Everything else is static. Set `SITE_URL` to the site's public address (such as
 `https://joes-sim.example.org`) so preview cards and the sitemap use the right links. The site
 has no database and stores nothing about its users.
 
+The community features (challenge leaderboards, a public gallery and short links) are optional.
+They need the small Cloudflare Worker in [`apps/api`](apps/api/); its README explains how to
+deploy it. Build the site with `NEXT_PUBLIC_COMMUNITY_API` set to the Worker's address to switch
+them on. Without that setting, the site has none of them and works exactly as before.
+
 ## The engine
 
 The engine in [`packages/engine`](packages/engine/) runs the classic Little Man Computer in three
@@ -72,6 +82,7 @@ RISC-V test programs with a RARS jar you supply.
 
 ```
 apps/web/            Next.js app: simulator (/sim), lessons (/learn), challenges, progress, embed
+apps/api/            Optional community service (Cloudflare Workers + D1): leaderboards, gallery, short links
 packages/engine/     Pure TypeScript machines, dialects, assembler, analysis. No UI, no browser APIs
 packages/narration/  Engine events to plain-language sentences
 packages/compiler/   Little Language to LMC compiler, with a line-by-line mapping

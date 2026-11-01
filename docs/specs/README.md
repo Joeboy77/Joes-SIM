@@ -15,6 +15,7 @@ confirmed from a public source are marked **unconfirmed** and reviewed before le
 | [custom-machines.md](custom-machines.md)       | The machine definition format: memory, word, registers, micro-operations               |
 | [riscv.md](riscv.md)                           | The RISC-V (RV32I) subset: instructions, memory, system calls, stages                  |
 | [little-language.md](little-language.md)       | The Little Language: grammar, meaning, how it compiles, mapping                        |
+| [community-api.md](community-api.md)           | The optional community API: leaderboards, gallery, short links                         |
 | [multicore.md](multicore.md)                   | The multicore machine: cores, scheduling, TAS, race detection                          |
 | [extended.md](extended.md)                     | The extended machine (Phase 6): stack, addressing modes, interrupts, devices. Approved |
 

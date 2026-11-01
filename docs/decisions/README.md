@@ -43,3 +43,4 @@ One file per decision, named `NNNN-short-title.md`, each with four headings:
 | 0036 | [The multicore machine](0036-multicore.md)                                           |
 | 0037 | [The Little Language compiler](0037-little-language.md)                              |
 | 0038 | [Custom machines and the RISC-V bridge](0038-custom-machines-and-riscv.md)           |
+| 0039 | [The community backend](0039-community-backend.md)                                   |
