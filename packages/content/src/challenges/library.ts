@@ -3,6 +3,7 @@
  * licensed under CC BY 4.0. Targets are the model solution's own scores; tests check that every
  * solution passes and meets them, and that every starter program does not already pass.
  */
+import { EXTENDED_CHALLENGES } from "./extended";
 import type { Challenge } from "./types";
 
 /** Source text, without the first line break, so programs can be written as indented blocks. */
@@ -1992,4 +1993,6 @@ count   DAT 0
 one     DAT 1
 `),
   },
+  // ---- The extended machine: stack, subroutines, addressing modes, interrupts, devices ----
+  ...EXTENDED_CHALLENGES,
 ];

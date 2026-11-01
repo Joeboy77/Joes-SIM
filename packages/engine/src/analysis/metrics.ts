@@ -6,7 +6,7 @@ export interface ProgramMetrics {
   readonly instructions: number;
   /** DAT mailboxes in the program. */
   readonly data: number;
-  /** All mailboxes the program fills. */
+  /** All mailboxes the program fills, including the second mailbox of two-mailbox instructions. */
   readonly mailboxes: number;
 }
 
@@ -19,7 +19,8 @@ export interface RunMetrics extends ProgramMetrics {
 export function measure(program: Program): ProgramMetrics {
   const instructions = program.kinds.filter((k) => k === "code").length;
   const data = program.kinds.filter((k) => k === "data").length;
-  return { instructions, data, mailboxes: instructions + data };
+  const operands = program.kinds.filter((k) => k === "operand").length;
+  return { instructions, data, mailboxes: instructions + operands + data };
 }
 
 export function measureRun(program: Program, state: MachineState): RunMetrics {

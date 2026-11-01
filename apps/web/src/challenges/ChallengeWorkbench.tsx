@@ -42,6 +42,7 @@ export function ChallengeWorkbench({ id }: { id: string }) {
       initial={{
         source: challenge.starter,
         dialect: challenge.dialect,
+        machine: challenge.machine ?? "classic",
         inputText: challenge.tests[0]?.inputs.join(", ") ?? "",
       }}
     >
@@ -116,6 +117,7 @@ function Workbench({ challenge }: { challenge: Challenge }) {
           {challenge.kind === "bug-hunt" && <span className="font-bold text-danger">Bug hunt</span>}
           <span>{challenge.concepts.map((c) => CONCEPT_NAMES[c]).join(", ")}</span>
           <span>· {DIALECTS[challenge.dialect].name} dialect</span>
+          {challenge.machine === "extended" && <span>· Extended machine</span>}
           {p.solved && <span className="font-bold text-success">· ✓ Solved</span>}
         </div>
         <p className="max-w-2xl text-lg">{challenge.description}</p>
@@ -271,6 +273,9 @@ function Results({
                 {r.pass ? "✓ Pass" : "✗ Fail"}
               </span>
               {": "}test {i + 1}, inputs {r.test.inputs.length ? r.test.inputs.join(", ") : "none"}
+              {r.test.keys?.length
+                ? `, keys ${r.test.keys.map((k) => (k.key === 10 ? "Enter" : String.fromCharCode(k.key))).join(" ")}`
+                : ""}
             </p>
             <p>{r.explanation}</p>
             {r.difference && (
@@ -279,6 +284,7 @@ function Results({
                   name: `${challenge.title}, test ${i + 1}`,
                   source,
                   dialect: challenge.dialect,
+                  ...(challenge.machine ? { machine: challenge.machine } : {}),
                   inputs: r.test.inputs.join(", "),
                   cycle: r.difference.cycle,
                 })}

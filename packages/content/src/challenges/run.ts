@@ -51,6 +51,8 @@ function explain(
   outputs: readonly ExpectedOutput[],
   expected: readonly ExpectedOutput[],
   pass: boolean,
+  /** The message of an extended machine error (stack overflow and so on). */
+  error?: string,
 ): string {
   if (pass) return `Output ${list(outputs)}, as expected.`;
   const got = `It output ${list(outputs)}; the test expects ${list(expected)}.`;
@@ -62,14 +64,19 @@ function explain(
     case "budget":
       return `The program was still running after ${TEST_STEP_LIMIT.toLocaleString("en")} steps. ${got}`;
     case "error":
-      return `The program stopped on a mailbox that is not an instruction. ${got}`;
+      return error
+        ? `The program stopped with an error: ${error} ${got}`
+        : `The program stopped on a mailbox that is not an instruction. ${got}`;
+    case "waiting-interrupt":
+      return `The program was still waiting for a key when the test ran out of keys. ${got}`;
     default:
       return got;
   }
 }
 
 export function runChallenge(source: string, challenge: Challenge): ChallengeResult {
-  const assembled = assemble(source, { dialect: challenge.dialect });
+  const machine = challenge.machine ?? "classic";
+  const assembled = assemble(source, { dialect: challenge.dialect, machine });
   const program = assembled.program;
   if (!program) {
     return {
@@ -84,11 +91,21 @@ export function runChallenge(source: string, challenge: Challenge): ChallengeRes
       memory: program.memory,
       inputs: [...test.inputs],
       dialect: challenge.dialect,
+      machine,
+      stackFloor: program.size,
+      keys: test.keys ?? [],
     });
     const r = run(initial, { maxSteps: TEST_STEP_LIMIT });
     const outputs = r.state.outputs.map(asExpected);
+    const devices = r.state.ext?.devices;
+    const lit = (devices?.pixels ?? []).flatMap((c, i) => (c ? [[i, c] as const] : []));
+    const consoleOk = test.console === undefined || devices?.console === test.console;
+    const pixelsOk =
+      test.pixels === undefined || JSON.stringify(lit) === JSON.stringify(test.pixels);
     const pass =
       r.reason === "halted" &&
+      consoleOk &&
+      pixelsOk &&
       outputs.length === test.outputs.length &&
       outputs.every((o, i) => o === test.outputs[i]);
     let difference: TestResult["difference"] = null;
@@ -105,7 +122,17 @@ export function runChallenge(source: string, challenge: Challenge): ChallengeRes
       reason: r.reason,
       cycles: r.state.cycles,
       difference,
-      explanation: explain(r.reason, outputs, test.outputs, pass),
+      explanation: !consoleOk
+        ? `The console shows ${JSON.stringify(devices?.console ?? "")}; the test expects ${JSON.stringify(test.console)}.`
+        : !pixelsOk
+          ? `The display has ${lit.length} pixel${lit.length === 1 ? "" : "s"} lit, not the ${test.pixels?.length ?? 0} the test expects in the right places and colours.`
+          : explain(
+              r.reason,
+              outputs,
+              test.outputs,
+              pass,
+              r.state.error?.code === "invalid-instruction" ? undefined : r.state.error?.message,
+            ),
     };
   });
   const passed = results.every((r) => r.pass);

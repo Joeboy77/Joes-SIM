@@ -28,7 +28,10 @@ describe("the challenge library", () => {
       });
 
       it("starts from a program that assembles but does not pass yet", () => {
-        const assembled = assemble(c.starter, { dialect: c.dialect });
+        const assembled = assemble(c.starter, {
+          dialect: c.dialect,
+          machine: c.machine ?? "classic",
+        });
         expect(assembled.ok).toBe(true);
         expect(runChallenge(c.starter, c).passed).toBe(false);
       });

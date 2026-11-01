@@ -1,4 +1,4 @@
-import type { DialectId } from "@joes-sim/engine";
+import type { DialectId, KeyPress } from "@joes-sim/engine";
 
 /** Concept tags (brief, 7.8). Every tag is covered by at least one challenge. */
 export const CONCEPTS = [
@@ -11,6 +11,11 @@ export const CONCEPTS = [
   "subroutines",
   "characters",
   "debugging",
+  // The extended machine.
+  "stack",
+  "addressing-modes",
+  "interrupts",
+  "devices",
 ] as const;
 export type Concept = (typeof CONCEPTS)[number];
 
@@ -24,6 +29,10 @@ export const CONCEPT_NAMES: Record<Concept, string> = {
   subroutines: "Subroutines",
   characters: "Characters",
   debugging: "Bug hunts",
+  stack: "The stack",
+  "addressing-modes": "Indirect and indexed addressing",
+  interrupts: "Interrupts",
+  devices: "Devices",
 };
 
 /** A number is an OUT value; a one-character string is an OTC character. */
@@ -32,6 +41,12 @@ export type ExpectedOutput = number | string;
 export interface ChallengeTest {
   readonly inputs: readonly number[];
   readonly outputs: readonly ExpectedOutput[];
+  /** Extended machine: keys pressed during the run. */
+  readonly keys?: readonly KeyPress[];
+  /** Extended machine: what the console must show at the end. */
+  readonly console?: string;
+  /** Extended machine: the lit pixels at the end, as [pixel, colour], in pixel order. */
+  readonly pixels?: readonly (readonly [number, number])[];
 }
 
 export interface Targets {
@@ -50,6 +65,8 @@ export interface Challenge {
   readonly difficulty: 1 | 2 | 3 | 4 | 5;
   readonly concepts: readonly Concept[];
   readonly dialect: DialectId;
+  /** Present for challenges on the extended machine (docs/specs/extended.md). */
+  readonly machine?: "extended";
   /** "build" starts from almost nothing; "bug-hunt" gives a broken program to fix. */
   readonly kind: "build" | "bug-hunt";
   readonly description: string;
