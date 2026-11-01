@@ -59,8 +59,10 @@ has no database and stores nothing about its users.
 The engine in [`packages/engine`](packages/engine/) runs the classic Little Man Computer in three
 dialects (Classic, Higginson-compatible and OCR). It steps by instruction or micro-step with events
 for every register transfer, records history for stepping backwards, proves when a program can
-never stop, and assembles with plain-language diagnostics. See [docs/specs](docs/specs/) for the
-exact rules of each dialect.
+never stop, and assembles with plain-language diagnostics. The extended machine adds a stack,
+subroutines, indirect and indexed addressing, interrupts and six virtual devices, and runs every
+classic program unchanged. See [docs/specs](docs/specs/) for the exact rules of each dialect and of
+the extended machine.
 
 ## Repository layout
 

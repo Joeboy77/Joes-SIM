@@ -109,3 +109,34 @@ describe("running a challenge", () => {
     });
   });
 });
+
+describe("running a challenge on the extended machine", () => {
+  const byId = (id: string) => CHALLENGES.find((c) => c.id === id) as Challenge;
+  const custom: Challenge = {
+    ...byId("stack-reverse"),
+    id: "custom",
+    tests: [{ inputs: [], outputs: [], console: "Hi" }],
+  };
+
+  it("checks the console", () => {
+    const r = runChallenge(
+      "        LDA h\n        PUT 1\n        LDA o\n        PUT 1\n        HLT\nh       DAT 72\no       DAT 111",
+      custom,
+    );
+    expect(r.results[0]?.explanation).toBe('The console shows "Ho"; the test expects "Hi".');
+  });
+
+  it("checks the pixel display", () => {
+    const r = runChallenge("        HLT\nred     DAT 4", byId("red-line"));
+    expect(r.results[0]?.explanation).toMatch(/0 pixels lit, not the 16/);
+  });
+
+  it("explains machine errors and waiting for a key", () => {
+    const err = runChallenge("        POP\n        HLT", byId("stack-reverse")).results[0];
+    expect(err?.explanation).toMatch(/stopped with an error: The stack is empty/);
+    const wait = runChallenge("        EI\n        WAIT\n        HLT", byId("stack-reverse"))
+      .results[0];
+    expect(wait?.reason).toBe("waiting-interrupt");
+    expect(wait?.explanation).toMatch(/still waiting for a key/);
+  });
+});
