@@ -52,7 +52,7 @@ shares it as a file or a link. The code is in `packages/engine/src/machines/cust
 | Field          | Meaning                                                                                                                                           |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `memory`       | How many memory words, 10 to 1000                                                                                                                 |
-| `word`         | `digits`: 1 to 6. `base`: 10, 2 or 16. `signed`: whether values can be negative                                                                   |
+| `word`         | `digits`: 1 to 6 (1 to 16 in base 2). `base`: 10, 2 or 16. `signed`: whether values can be negative                                                                   |
 | `opcodeDigits` | Leading digits of an instruction word that hold the opcode. The rest hold the operand (usually an address)                                        |
 | `registers`    | Names (letters, digits, underscore). Four need a `role`: `pc`, `mar`, `mdr` and `ir`. Others are free (ACC, B, X…)                                |
 | `fetch`        | The micro-operations that fetch an instruction. Decoding is automatic: the IR splits into opcode and operand                                      |
