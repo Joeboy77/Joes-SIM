@@ -157,7 +157,7 @@ function Figures({ result }: { result: PipelineResult }) {
     </div>
   );
   return (
-    <dl className="grid grid-cols-2 gap-1 sm:grid-cols-4">
+    <dl aria-label="Pipeline figures" className="grid grid-cols-2 gap-1 sm:grid-cols-4">
       {item("Instructions", String(n))}
       {item("Clock cycles", String(result.cycles))}
       {item("Cycles per instruction", cpi.toFixed(2))}

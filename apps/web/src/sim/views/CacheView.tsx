@@ -79,7 +79,7 @@ export function CacheView() {
   return (
     <div className="space-y-3 p-3">
       <h2 className="text-sm font-bold">Cache</h2>
-      <Settings config={config} />
+      <CacheSettings config={config} />
       {problem ? (
         <p className="text-sm text-danger" role="alert">
           {problem}
@@ -95,7 +95,8 @@ export function CacheView() {
   );
 }
 
-function Settings({ config }: { config: CacheConfig }) {
+/** The cache settings form, also used by cache challenges. */
+export function CacheSettings({ config }: { config: CacheConfig }) {
   const store = useSim();
   const id = useId();
   const set = (c: Partial<CacheConfig>) => store.getState().setCache(c);

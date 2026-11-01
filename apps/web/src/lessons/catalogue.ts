@@ -137,6 +137,26 @@ export const LESSONS: readonly LessonInfo[] = [
     dialect: "classic",
     machine: "extended",
   },
+  {
+    slug: "pipelining",
+    title: "Pipelining",
+    summary: "Overlapping instructions like a production line, and what makes them wait.",
+    minutes: 15,
+    concepts: ["pipelining", "hazards"],
+    prerequisites: ["addressing-modes"],
+    dialect: "classic",
+    machine: "extended",
+  },
+  {
+    slug: "caches",
+    title: "Caches",
+    summary: "A small, fast memory that keeps what the program is using now.",
+    minutes: 12,
+    concepts: ["memory hierarchy", "caches"],
+    prerequisites: ["pipelining"],
+    dialect: "classic",
+    machine: "extended",
+  },
 ];
 
 export const lessonBySlug = (slug: string) => LESSONS.find((l) => l.slug === slug);

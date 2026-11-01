@@ -61,8 +61,9 @@ dialects (Classic, Higginson-compatible and OCR). It steps by instruction or mic
 for every register transfer, records history for stepping backwards, proves when a program can
 never stop, and assembles with plain-language diagnostics. The extended machine adds a stack,
 subroutines, indirect and indexed addressing, interrupts and six virtual devices, and runs every
-classic program unchanged. See [docs/specs](docs/specs/) for the exact rules of each dialect and of
-the extended machine.
+classic program unchanged. The pipeline and cache views show how the same run would time on a
+five-stage pipeline and through a configurable cache. See [docs/specs](docs/specs/) for the exact
+rules of each dialect, the extended machine, the pipeline and the cache.
 
 ## Repository layout
 

@@ -1,0 +1,71 @@
+Memory is slow compared with the processor. A **cache** is a small, fast memory between them that
+keeps copies of the mailboxes the program is using now. If the value is in the cache it is a
+**hit** (fast); if not it is a **miss**, and a whole **block** of mailboxes is fetched from memory.
+
+Programs tend to reuse the same mailboxes (**temporal locality**: a loop counter) and to use
+neighbouring ones (**spatial locality**: a table), so a small cache catches most accesses.
+
+## Where does a block go?
+
+The cache is divided into **sets**. An address, written in binary, splits into three parts:
+
+- the **offset**: which mailbox inside the block;
+- the **index**: which set the block must go in;
+- the **tag**: the rest, kept to tell apart the blocks that share a set.
+
+A **direct-mapped** cache has one place (way) per set. A **set-associative** cache has several, and
+a **fully associative** cache has a single set where any block can go. When a set is full, the
+**replacement policy** (LRU, FIFO or random) picks which block to throw out.
+
+<LessonSim
+  title="Add up a table through a cache"
+  machine="extended"
+  view="cache"
+  program={`
+loop    LDA total
+        ADD t,X
+        STA total
+        INX
+        STX i
+        LDA i
+        SUB n
+        BRZ done
+        BRA loop
+done    LDA total
+        OUT
+        HLT
+total   DAT 0
+i       DAT 0
+n       DAT 8
+t       DAT 3
+        DAT 1
+        DAT 4
+        DAT 1
+        DAT 5
+        DAT 9
+        DAT 2
+        DAT 6
+`}
+/>
+
+Step through it and watch each address split into tag, set and offset. Then try different block
+sizes, sets and ways, and watch the hit rate.
+
+<Predict
+  question="The table starts at mailbox 17. With 2-mailbox blocks, reading entry 1 (mailbox 18) is a miss. What happens when the loop then reads entry 2 (mailbox 19)?"
+  choices={["a hit", "a miss"]}
+  answer="a hit"
+  explain="The miss on mailbox 18 brought in its whole block, mailboxes 18 and 19, so 19 is already in the cache. That is spatial locality."
+/>
+
+## Kinds of miss
+
+- **Compulsory**: the first time a block is used. No cache can avoid these.
+- **Capacity**: the cache is too small for everything the program is using.
+- **Conflict**: there was room, but the block's set was full. More ways help.
+
+**Writes** need a policy too: **write-back** marks a block dirty and writes it to memory only when
+it is thrown out; **write-through** writes every change to memory straight away.
+
+The **Choose a cache that hits 80%** challenge asks you to find a small cache that suits this
+program.

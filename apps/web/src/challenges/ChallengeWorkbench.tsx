@@ -17,7 +17,9 @@ import { useEffect, useRef, useState } from "react";
 import { Editor } from "@/sim/editor/Editor";
 import { Hints } from "@/sim/panels/ProblemsPanel";
 import { SimProvider, useSim, useSimState } from "@/sim/SimProvider";
+import { CacheSettings } from "@/sim/views/CacheView";
 import { handoffHref } from "@/sim/workspace/handoff";
+import { sharePath } from "@/sim/workspace/share";
 import {
   EMPTY_CHALLENGE,
   bestOf,
@@ -54,6 +56,12 @@ export function ChallengeWorkbench({ id }: { id: string }) {
 function Workbench({ challenge }: { challenge: Challenge }) {
   const store = useSim();
   const source = useSimState((s) => s.source);
+  const cache = useSimState((s) => s.cache);
+
+  // A cache challenge starts from its own cache.
+  useEffect(() => {
+    if (challenge.cache) store.getState().setCache(challenge.cache.start);
+  }, [store, challenge.cache]);
   const [progress, setProgress] = useState<ChallengeProgress | null>(null);
   const [result, setResult] = useState<ChallengeResult | null>(null);
   const [runId, setRunId] = useState(0);
@@ -85,7 +93,7 @@ function Workbench({ challenge }: { challenge: Challenge }) {
   }, [source, challenge.id]);
 
   const runTests = async () => {
-    const r = runChallenge(source, challenge);
+    const r = runChallenge(source, challenge, { cache: store.getState().cache });
     setResult(r);
     setRunId((n) => n + 1);
     const changed = source.trim() !== challenge.starter.trim();
@@ -129,6 +137,30 @@ function Workbench({ challenge }: { challenge: Challenge }) {
           <div className="h-80 overflow-hidden rounded-md border border-border">
             <Editor />
           </div>
+          {challenge.cache && <CacheSettings config={cache} />}
+          {(challenge.pipeline || challenge.cache) && (
+            <p className="text-sm">
+              <a
+                href={sharePath({
+                  name: challenge.title,
+                  source,
+                  dialect: challenge.dialect,
+                  machine: challenge.machine ?? "classic",
+                  inputs: challenge.tests[0]?.inputs.join(", ") ?? "",
+                  view: challenge.pipeline ? "pipeline" : "cache",
+                })}
+                target="_blank"
+                rel="noopener"
+                className="font-bold text-accent underline"
+              >
+                See it in the {challenge.pipeline ? "pipeline" : "cache"} view
+                <span className="sr-only"> (opens in a new tab)</span>
+              </a>
+              {challenge.pipeline
+                ? ` (forwarding ${challenge.pipeline.forwarding ? "on" : "off"}, prediction ${challenge.pipeline.prediction ? "on" : "off"})`
+                : ""}
+            </p>
+          )}
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
@@ -306,8 +338,15 @@ function Results({
         {result.passed ? (
           <>
             <SuccessMark reduced={reduced} delay={delay(result.results.length)} />
-            <span className="text-success">All {passed} tests pass. Well done!</span>
+            <span className="text-success">
+              All {passed} tests pass
+              {result.goal ? ` and the goal is met. ${result.goal.explanation}` : "."} Well done!
+            </span>
           </>
+        ) : result.goal && passed === result.results.length ? (
+          <span>
+            All {passed} tests pass, but not the goal yet. {result.goal.explanation}
+          </span>
         ) : (
           <span>
             {passed} of {result.results.length} tests pass.

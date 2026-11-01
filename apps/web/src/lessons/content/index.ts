@@ -15,4 +15,6 @@ export const LESSON_CONTENT: Record<string, () => Promise<{ default: ComponentTy
   "addressing-modes": () => import("./addressing-modes.mdx"),
   "stack-and-subroutines": () => import("./stack-and-subroutines.mdx"),
   "interrupts-and-devices": () => import("./interrupts-and-devices.mdx"),
+  pipelining: () => import("./pipelining.mdx"),
+  caches: () => import("./caches.mdx"),
 };

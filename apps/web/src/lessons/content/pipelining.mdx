@@ -1,0 +1,71 @@
+Every instruction goes through the same five steps: **fetch** it (IF), **decode** it (ID),
+**execute** it (EX), use **memory** (MEM) and **write back** the result (WB). The Little Man does
+one instruction at a time, all five steps, then the next. A **pipeline** works like a production
+line instead: while one instruction is being decoded, the next is already being fetched.
+
+With five stages, up to five instructions are in the pipeline at once. Ideally one finishes every
+clock cycle, so _n_ instructions take _n_ + 4 cycles instead of 5 × _n_.
+
+<LessonSim
+  title="Watch instructions overlap"
+  machine="extended"
+  view="pipeline"
+  program={`
+        LDA a
+        LDA b
+        LDA c
+        HLT
+a       DAT 1
+b       DAT 2
+c       DAT 3
+`}
+  pauseAt={4}
+/>
+
+Move through the clock cycles with the slider. Each instruction slides from stage to stage, and
+the diagram below shows every instruction against every cycle.
+
+<Predict
+  question="Four instructions, no waiting. How many clock cycles does the pipeline take?"
+  choices={["4", "8", "20"]}
+  answer="8"
+  explain="The first instruction finishes in cycle 5, then one more finishes every cycle: 4 + 4 = 8. Without the pipeline it would take 4 × 5 = 20."
+/>
+
+## Hazards: when an instruction has to wait
+
+- A **data hazard**: an instruction needs a value the one before has not produced yet.
+  **Forwarding** passes a value straight from the end of EX or MEM to the instruction that
+  needs it, instead of waiting for write back.
+- A **control hazard**: after a branch, the pipeline has already fetched the next mailboxes. If
+  the branch jumps, those are **flushed** and the right instruction is fetched. **Branch
+  prediction** guesses where a branch will go, from what it did before.
+- A **structural hazard**: two instructions need the same stage. Indirect addressing uses MEM
+  twice, so the instruction behind waits.
+
+<LessonSim
+  title="A loop on the pipeline"
+  machine="extended"
+  view="pipeline"
+  program={`
+        LDA n
+loop    SUB one
+        BRP loop        // waits for SUB, then may jump
+        HLT
+n       DAT 4
+one     DAT 1
+`}
+  pauseAt={12}
+/>
+
+Run it, then turn **Forwarding** off and on, and **Branch prediction** on, and compare the stall
+cycles. Each BRP waits one cycle for SUB's result; each jump throws away two fetched
+instructions, unless the predictor guessed right.
+
+<Note>
+  The pipeline never changes what a program computes: the extended machine runs it, and the pipeline
+  works out the timing. The exact rules, with worked examples, are in the pipeline specification.
+</Note>
+
+The **Reorder to remove the stall** challenge asks you to move one instruction so the pipeline
+never waits.
