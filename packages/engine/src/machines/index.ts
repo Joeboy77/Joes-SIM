@@ -5,3 +5,4 @@ export * from "./pipeline";
 export * from "./cache";
 export * from "./multicore";
 export * from "./custom";
+export * from "./riscv";

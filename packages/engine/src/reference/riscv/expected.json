@@ -1,0 +1,21 @@
+{
+  "hello.s": { "inputs": [], "output": "Hello, RISC-V!\n" },
+  "sum-loop.s": { "inputs": [], "output": "55" },
+  "array-sum.s": { "inputs": [], "output": "12" },
+  "multiply.s": { "inputs": [], "output": "-42" },
+  "shifts.s": { "inputs": [], "output": "-4\n15\n-32\n" },
+  "signed-unsigned.s": { "inputs": [], "output": "10" },
+  "bytes.s": { "inputs": [], "output": "-56 200" },
+  "big-constants.s": { "inputs": [], "output": "305422335 0" },
+  "recursion.s": { "inputs": [], "output": "15" },
+  "read-double.s": { "inputs": [21], "output": "42" },
+  "exit-code.s": { "inputs": [], "output": "", "exitCode": 3 },
+  "branches.s": { "inputs": [], "output": "01" },
+  "strlen.s": { "inputs": [], "output": "5!" },
+  "reverse.s": { "inputs": [], "output": "4321" },
+  "logic.s": { "inputs": [], "output": "8 14 6 4 15 -13" },
+  "drop-off.s": { "inputs": [], "output": "7", "ended": "dropped off the bottom" },
+  "gcd.s": { "inputs": [], "output": "6" },
+  "halfwords.s": { "inputs": [], "output": "-2 65534 7" },
+  "jalr.s": { "inputs": [], "output": "12" }
+}
