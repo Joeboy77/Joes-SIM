@@ -12,6 +12,8 @@ export interface LessonInfo {
   readonly concepts: readonly string[];
   readonly prerequisites: readonly string[];
   readonly dialect: DialectId;
+  /** Present for lessons on the extended machine. */
+  readonly machine?: "extended";
 }
 
 export const LESSONS: readonly LessonInfo[] = [
@@ -104,6 +106,36 @@ export const LESSONS: readonly LessonInfo[] = [
     concepts: ["arrays", "self-modifying code"],
     prerequisites: ["counters-and-totals"],
     dialect: "classic",
+  },
+  {
+    slug: "addressing-modes",
+    title: "Pointers and indexes",
+    summary: "Indirect and indexed addressing: reaching a mailbox whose address you work out.",
+    minutes: 12,
+    concepts: ["addressing modes", "arrays"],
+    prerequisites: ["arrays"],
+    dialect: "classic",
+    machine: "extended",
+  },
+  {
+    slug: "stack-and-subroutines",
+    title: "The stack and subroutines",
+    summary: "PUSH, POP, CALL and RET: reusing code and finding the way back.",
+    minutes: 15,
+    concepts: ["stack", "subroutines"],
+    prerequisites: ["addressing-modes"],
+    dialect: "classic",
+    machine: "extended",
+  },
+  {
+    slug: "interrupts-and-devices",
+    title: "Interrupts and devices",
+    summary: "Talking to a display, a keyboard and a timer, and letting them interrupt you.",
+    minutes: 15,
+    concepts: ["interrupts", "input-output devices"],
+    prerequisites: ["stack-and-subroutines"],
+    dialect: "classic",
+    machine: "extended",
   },
 ];
 

@@ -1,0 +1,115 @@
+Real computers talk to many **devices**: screens, keyboards, timers, speakers. The extended
+machine has six: a text console, a 16 by 16 pixel display, a keyboard, a timer, a
+seven-segment display and a beeper. This lesson uses the **extended machine** (Machine:
+Extended).
+
+## Ports: GET and PUT
+
+Each device is reached through numbered **ports**. `PUT 30` sends the accumulator to port 30,
+the seven-segment display. `GET 2` reads port 2, the next key from the keyboard. The
+**reference page** lists every port.
+
+<LessonSim
+  title="Paint some pixels"
+  machine="extended"
+  program={`
+        LDA start
+        PUT 10          // choose pixel 17: row 2, column 2
+        LDA yellow
+        PUT 11          // colour it, and move to the next pixel
+        PUT 11
+        PUT 11
+        LDA seven
+        PUT 30          // show 7 on the seven-segment display
+        HLT
+start   DAT 17
+yellow  DAT 14
+seven   DAT 7
+`}
+/>
+
+## Checking, or being told
+
+A program could keep **checking** the keyboard: GET 3 says how many keys are waiting. But
+checking over and over wastes time. Instead, a device can **interrupt** the program.
+
+1. `VEC handler` says where the **interrupt handler** is.
+2. `EI` turns interrupts on.
+3. When a device needs attention, the machine finishes the current instruction, **saves** the
+   program counter, the accumulator and the flag on the stack, and jumps to the handler.
+4. The handler does its job and ends with `RTI`, which **restores** what was saved, so the main
+   program carries on as if nothing happened.
+
+The **timer** interrupts every n instructions (set with PUT 20). `WAIT` idles until an
+interrupt comes.
+
+<LessonSim
+  title="Count timer ticks"
+  machine="extended"
+  program={`
+        VEC tick
+        LDA period
+        PUT 20          // a timer interrupt every 10 instructions
+        EI
+idle    WAIT
+        BRA idle
+tick    LDA count
+        ADD one
+        STA count
+        PUT 30          // show the count
+        SUB five
+        BRZ done
+        RTI
+done    HLT
+period  DAT 10
+count   DAT 0
+one     DAT 1
+five    DAT 5
+`}
+/>
+
+Watch the **Interrupts** panel: each interrupt is marked on the timeline, and while the handler
+runs the panel says where the main program will carry on. The **Stack** panel shows the saved
+PC, ACC and flag.
+
+<Predict
+  question="An interrupt arrives just before the instruction in mailbox 05. Where does RTI send the program?"
+  choices={["the handler", "mailbox 05", "mailbox 00"]}
+  answer="mailbox 05"
+  explain="Interrupt entry saves the program counter, which says 05. RTI takes it back off the stack, so the interrupted instruction runs next."
+/>
+
+## The keyboard
+
+A key press puts the key's code in the **keyboard buffer** and raises a keyboard interrupt,
+which stays raised while keys are waiting. Port 50 says which device interrupted: 1 for the
+timer, 2 for the keyboard. Type in the keyboard box while this runs:
+
+<LessonSim
+  title="Echo keys to the console"
+  machine="extended"
+  program={`
+        VEC key
+        EI
+idle    WAIT            // nothing to do until a key comes
+        BRA idle
+key     GET 2           // the key's code
+        STA ch
+        SUB enter
+        BRZ done
+        LDA ch
+        PUT 1           // show it on the console
+        RTI
+done    HLT
+ch      DAT
+enter   DAT 10
+`}
+/>
+
+<Note>
+  Key presses are recorded with the step they arrived at, so stepping back and replaying always
+  gives the same run. The timer counts instructions, not seconds, for the same reason.
+</Note>
+
+The **Count the ticks**, **What key was that?** and **Draw a red line** challenges practise
+devices and interrupts.

@@ -17,6 +17,8 @@ export interface LessonSimProps {
   readonly program: string;
   readonly inputs?: string;
   readonly dialect?: DialectId;
+  /** "extended" for the stack, addressing modes, interrupts and devices. */
+  readonly machine?: "classic" | "extended";
   readonly view?: ViewMode;
   /** A part to keep highlighted, to draw attention to it. */
   readonly highlight?: Component;
@@ -36,6 +38,7 @@ export function LessonSim(props: LessonSimProps) {
       initial={{
         source: props.program.replace(/^\n/, ""),
         dialect: props.dialect ?? "classic",
+        machine: props.machine ?? "classic",
         inputText: props.inputs ?? "",
       }}
     >

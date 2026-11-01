@@ -1,0 +1,88 @@
+In the last lesson the program rewrote its own `LDA` to reach entry i of a table. It works,
+but it is hard to read and easy to get wrong. Real processors solve the problem in hardware,
+with **addressing modes**: different ways for an instruction to find its mailbox.
+
+This lesson uses the **extended machine**, which keeps everything the classic machine has and
+adds new instructions. Choose it with **Machine: Extended** in the simulator.
+
+## Two mailboxes for one instruction
+
+The extended machine's new instructions start with 4. When one needs an address, the address
+goes in the **next mailbox**, so the instruction takes two mailboxes. The memory grid labels the
+second one as the address of the instruction before it.
+
+## Indexed: a table and a position
+
+`LDA table,X` loads from mailbox **table + X**, where **X** is the **index register**: a new
+register that holds a position. `LDX n` loads X from a mailbox, and `INX` and `DEX` add or take
+one from it.
+
+<LessonSim
+  title="Look it up, without rewriting code"
+  machine="extended"
+  program={`
+        INP
+        STA n
+        LDX n           // X = the position
+        LDA squares,X   // the mailbox squares + X
+        OUT
+        HLT
+n       DAT
+squares DAT 0
+        DAT 1
+        DAT 4
+        DAT 9
+        DAT 16
+`}
+  inputs="3"
+  memory
+/>
+
+Step through it and watch the **index-add** micro-step: the address register gets squares + X.
+
+<Predict
+  question="In this program, squares is mailbox 09 and X is 3. Which mailbox does LDA squares,X read?"
+  choices={["09", "12", "03"]}
+  answer="12"
+  explain="Indexed addressing adds X to the address: 09 + 3 = 12, which holds 9, the square of 3."
+/>
+
+## Indirect: following a pointer
+
+`LDA @ptr` does not load ptr. It loads the mailbox **whose address is in ptr**. A mailbox that
+holds an address is called a **pointer**. Move the pointer on and the same instruction reads
+the next value.
+
+<LessonSim
+  title="Walk along a list"
+  machine="extended"
+  program={`
+loop    LDA @ptr        // the value ptr points to
+        BRZ done
+        OUT
+        LDA ptr         // move the pointer on by one
+        ADD one
+        STA ptr
+        BRA loop
+done    HLT
+ptr     DAT list
+one     DAT 1
+list    DAT 5
+        DAT 8
+        DAT 13
+        DAT 0
+`}
+  memory
+/>
+
+<Note>
+  An address worked out while the program runs can be wrong. If X or a pointer leads outside
+  mailboxes 00 to 99, the machine stops with an error that says how the address was worked out, so
+  you can step back to where it went wrong.
+</Note>
+
+## Which to use?
+
+Use **indexed** when you count through a table by position, and **indirect** when you keep the
+address itself, for example to walk along a list. The **Look it up in a table** and **Follow
+the pointer** challenges practise each one.

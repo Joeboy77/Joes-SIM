@@ -1,0 +1,36 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { assemble } from "@joes-sim/engine";
+import { describe, expect, it } from "vitest";
+import { LESSONS } from "./catalogue";
+import { LESSON_CONTENT } from "./content";
+
+const dir = join(__dirname, "content");
+
+/** Every <LessonSim> in a lesson: its program, and the machine it runs on. */
+function sims(slug: string) {
+  const text = readFileSync(join(dir, `${slug}.mdx`), "utf8");
+  return [...text.matchAll(/<LessonSim([\s\S]*?)\/>/g)].map(([, attrs = ""]) => ({
+    program: /program=\{`([\s\S]*?)`\}/.exec(attrs)?.[1]?.replace(/^\n/, "") ?? "",
+    machine: /machine="extended"/.test(attrs) ? ("extended" as const) : ("classic" as const),
+  }));
+}
+
+describe("lessons", () => {
+  it("lists every lesson once, with its content and known prerequisites", () => {
+    const slugs = LESSONS.map((l) => l.slug);
+    expect(new Set(slugs).size).toBe(slugs.length);
+    expect(Object.keys(LESSON_CONTENT).sort()).toEqual([...slugs].sort());
+    for (const l of LESSONS) for (const p of l.prerequisites) expect(slugs).toContain(p);
+  });
+
+  for (const lesson of LESSONS) {
+    it(`${lesson.slug}: every simulator program assembles on its machine`, () => {
+      for (const s of sims(lesson.slug)) {
+        const r = assemble(s.program, { dialect: lesson.dialect, machine: s.machine });
+        expect(r.diagnostics.filter((d) => d.severity === "error")).toEqual([]);
+        if (lesson.machine === "extended") expect(s.machine).toBe("extended");
+      }
+    });
+  }
+});

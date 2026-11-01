@@ -1,0 +1,108 @@
+Programs often need the same steps in several places: doubling a number, printing a line,
+checking a key. Copying the steps is wasteful. A **subroutine** is a piece of code written
+once and **called** from wherever it is needed. The trick is finding the way back afterwards.
+
+This lesson uses the **extended machine** (Machine: Extended).
+
+## The stack
+
+The **stack** is a pile of values kept at the top of memory. It grows **down** from mailbox
+99, and the **stack pointer** (SP) holds the address of the value on top.
+
+- `PUSH` moves SP down by one and puts the accumulator there.
+- `POP` takes the top value into the accumulator and moves SP back up.
+
+The last value pushed is the first one popped, like a pile of plates.
+
+<LessonSim
+  title="Backwards with the stack"
+  machine="extended"
+  program={`
+        INP
+        PUSH
+        INP
+        PUSH
+        INP
+        OUT
+        POP
+        OUT
+        POP
+        OUT
+        HLT
+`}
+  inputs="1, 2, 3"
+/>
+
+Watch the **Stack** panel grow and shrink as the values go on and come off.
+
+## CALL and RET
+
+`CALL double` does two things: it **pushes the return address** (the instruction after the
+CALL) onto the stack, then jumps to `double`. At the end of the subroutine, `RET` **pops** that
+address back into the program counter, so the program carries on just after the CALL. The
+machine draws an arrow back to the caller.
+
+<LessonSim
+  title="Call a subroutine twice"
+  machine="extended"
+  program={`
+        INP
+        CALL double
+        OUT
+        INP
+        CALL double
+        OUT
+        HLT
+double  STA tmp         // the number arrives in the accumulator
+        ADD tmp
+        RET             // back to the instruction after the CALL
+tmp     DAT
+`}
+  inputs="3, 4"
+  memory
+/>
+
+<Predict
+  question="CALL double is in mailboxes 01 and 02. What return address does it push?"
+  choices={["01", "02", "03"]}
+  answer="03"
+  explain="CALL takes two mailboxes, 01 and 02, so the next instruction, OUT, is in mailbox 03. That is where RET goes back to."
+/>
+
+## Why a stack, and not one mailbox?
+
+A subroutine can call another subroutine, or even itself. Each CALL pushes a new return
+address on top of the others, and each RET takes the newest one, so every call finds its own
+way back. That is how **recursion** works:
+
+<LessonSim
+  title="Add 1 to n, recursively"
+  machine="extended"
+  program={`
+        INP
+        CALL sum
+        OUT
+        HLT
+sum     BRZ base        // sum(0) = 0
+        PUSH            // keep n
+        SUB one
+        CALL sum        // the accumulator becomes sum(n - 1)
+        STA part
+        POP             // n again
+        ADD part
+        RET
+base    RET
+one     DAT 1
+part    DAT
+`}
+  inputs="4"
+/>
+
+<Note>
+  The stack is small: it shares the 100 mailboxes with your program. If it would grow into the
+  program, the machine stops with a **stack overflow** and names the mailbox. RET or POP with
+  nothing on the stack is a **stack underflow**.
+</Note>
+
+The **Backwards with the stack**, **Call a subroutine twice** and **the subroutine that never
+came back** challenges practise these ideas.
