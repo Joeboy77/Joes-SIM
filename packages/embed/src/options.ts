@@ -8,7 +8,7 @@ export const DEFAULT_PANELS: readonly Panel[] = ["editor", "machine", "explain",
 
 const DIALECTS = ["classic", "higginson", "ocr"] as const;
 const MACHINES = ["classic", "extended"] as const;
-const VIEWS = ["datapath", "story", "flow"] as const;
+const VIEWS = ["datapath", "story", "flow", "pipeline", "cache"] as const;
 
 export interface EmbedSettings {
   /** Plain source text, from `program`. */

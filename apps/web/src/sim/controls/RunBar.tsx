@@ -12,6 +12,8 @@ export const VIEW_LABELS: Record<ViewMode, string> = {
   datapath: "Datapath",
   story: "Story",
   flow: "Flow graph",
+  pipeline: "Pipeline",
+  cache: "Cache",
 };
 
 function Button({

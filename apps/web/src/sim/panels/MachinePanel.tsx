@@ -4,8 +4,10 @@ import { useSimState } from "../SimProvider";
 import { ExtendedPanel } from "../extended/ExtendedPanel";
 import { useActivity } from "../useActivity";
 import { DatapathView } from "../views/DatapathView";
+import { CacheView } from "../views/CacheView";
 import { FlowView } from "../views/FlowView";
 import { MemoryGrid } from "../views/MemoryGrid";
+import { PipelineView } from "../views/PipelineView";
 import { StoryView } from "../views/StoryView";
 
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -18,7 +20,17 @@ export function MachinePanel({ memory = true }: { memory?: boolean }) {
   return (
     <div className="space-y-3">
       <div className="overflow-hidden rounded-md border border-border bg-surface">
-        {view === "datapath" ? <DatapathView /> : view === "story" ? <StoryView /> : <FlowView />}
+        {view === "datapath" ? (
+          <DatapathView />
+        ) : view === "story" ? (
+          <StoryView />
+        ) : view === "flow" ? (
+          <FlowView />
+        ) : view === "pipeline" ? (
+          <PipelineView />
+        ) : (
+          <CacheView />
+        )}
       </div>
       {b && (
         <p className="rounded-sm border border-branch px-3 py-1.5 text-sm" role="note">

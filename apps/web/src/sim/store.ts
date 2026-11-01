@@ -17,7 +17,11 @@ import {
   provideInput as engineProvideInput,
   run,
   step,
+  DEFAULT_CACHE,
+  DEFAULT_PIPELINE,
   type AssembleResult,
+  type CacheConfig,
+  type PipelineOptions,
   type Component,
   type ConditionTarget,
   type DialectId,
@@ -34,8 +38,8 @@ import type { Level } from "@joes-sim/narration";
 import { createStore } from "zustand/vanilla";
 import { SPEEDS, type Speed } from "./speeds";
 
-export type ViewMode = "datapath" | "story" | "flow";
-export const VIEW_ORDER: readonly ViewMode[] = ["datapath", "story", "flow"];
+export type ViewMode = "datapath" | "story" | "flow" | "pipeline" | "cache";
+export const VIEW_ORDER: readonly ViewMode[] = ["datapath", "story", "flow", "pipeline", "cache"];
 export type Direction = "forward" | "back" | "jump";
 
 export const STARTER_PROGRAM = `// Add two numbers
@@ -115,6 +119,10 @@ export interface SimState {
   metCondition: number | null;
   /** A machine part the learner is pointing at in the narration, to highlight in the views. */
   hoverTerm: Component | null;
+  /** Pipeline view settings. */
+  pipeline: PipelineOptions;
+  /** Cache view settings. */
+  cache: CacheConfig;
 }
 
 export interface SimActions {
@@ -153,6 +161,8 @@ export interface SimActions {
   addCondition(condition: RunCondition): void;
   removeCondition(index: number): void;
   setHoverTerm(term: Component | null): void;
+  setPipeline(options: Partial<PipelineOptions>): void;
+  setCache(config: Partial<CacheConfig>): void;
 }
 
 export type SimStore = SimState & SimActions;
@@ -286,6 +296,8 @@ export function createSimStore(
       watches: [{ kind: "acc" }, { kind: "pc" }],
       conditions: [],
       hoverTerm: null,
+      pipeline: DEFAULT_PIPELINE,
+      cache: DEFAULT_CACHE,
 
       setSource(next) {
         const { dialect, inputText, machine, stepId } = get();
@@ -530,6 +542,14 @@ export function createSimStore(
 
       setHoverTerm(term) {
         if (term !== get().hoverTerm) set({ hoverTerm: term });
+      },
+
+      setPipeline(options) {
+        set({ pipeline: { ...get().pipeline, ...options } });
+      },
+
+      setCache(config) {
+        set({ cache: { ...get().cache, ...config } });
       },
     };
   });

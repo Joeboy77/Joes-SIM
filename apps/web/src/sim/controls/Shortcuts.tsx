@@ -13,7 +13,7 @@ export const SHORTCUTS: readonly [string, string][] = [
   ["M", "Step one micro-step"],
   ["Shift+M", "Step back one micro-step"],
   ["R", "Reset"],
-  ["V", "Switch view: datapath, story, flow graph"],
+  ["V", "Switch view: datapath, story, flow graph, pipeline, cache"],
   ["F", "Presentation mode (bigger everything)"],
   ["?", "Show this help"],
 ];

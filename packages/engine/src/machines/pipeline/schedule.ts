@@ -206,7 +206,8 @@ export function schedulePipeline(
   >();
   const counters = new Map<number, number>();
   const targets = new Map<number, number>();
-  const stores: { at: number; address: number }[] = [];
+  /** The latest cycle each mailbox was written by a store. */
+  const stored = new Map<number, number>();
   let redirect = 0;
   const totals = { data: 0, control: 0, structural: 0, selfModifying: 0 };
 
@@ -227,10 +228,10 @@ export function schedulePipeline(
     fetch = bind(fetch, redirect, "control");
     redirect = 0;
     // A store into this instruction after it would have been fetched: fetch it again.
-    const covers = (a: number) =>
-      a === row.address || (words === 2 && a === (row.address + 1) % MEMORY_SIZE);
-    for (const s of stores)
-      if (covers(s.address) && s.at >= fetch) fetch = bind(fetch, s.at + 1, "selfModifying");
+    for (const a of words === 2 ? [row.address, (row.address + 1) % MEMORY_SIZE] : [row.address]) {
+      const at = stored.get(a);
+      if (at !== undefined && at >= fetch) fetch = bind(fetch, at + 1, "selfModifying");
+    }
 
     // ID: once the previous instruction has moved on to EX.
     const decode = Math.max(fetch + 1, prev ? prev.start.EX : 0);
@@ -273,7 +274,7 @@ export function schedulePipeline(
       writer.set(res, { index: k, ready, stage: when, wb: writeBack });
     }
     if (row.write && (row.mnemonic === "STA" || row.mnemonic === "STX")) {
-      stores.push({ at: memStart + p.mem - 1, address: row.write.address });
+      stored.set(row.write.address, memStart + p.mem - 1);
     }
 
     // Each cycle in which nothing finished just before this instruction is put down to the last

@@ -22,7 +22,7 @@ describe("the challenge library", () => {
   for (const c of CHALLENGES) {
     describe(c.id, () => {
       it("has a model solution that passes every test and meets the targets exactly", () => {
-        const r = runChallenge(c.solution, c);
+        const r = runChallenge(c.solution, c, c.cache ? { cache: c.cache.solution } : {});
         expect(r.results.filter((t) => !t.pass).map((t) => t.explanation)).toEqual([]);
         expect(r.scores).toEqual(c.targets);
       });
@@ -138,5 +138,36 @@ describe("running a challenge on the extended machine", () => {
       .results[0];
     expect(wait?.reason).toBe("waiting-interrupt");
     expect(wait?.explanation).toMatch(/still waiting for a key/);
+  });
+});
+
+describe("pipeline and cache goals", () => {
+  const byId = (id: string) => CHALLENGES.find((c) => c.id === id) as Challenge;
+
+  it("passes the tests but misses the stall goal with the starter program", () => {
+    const c = byId("no-stalls");
+    const r = runChallenge(c.starter, c);
+    expect(r.results.every((t) => t.pass)).toBe(true);
+    expect(r.goal).toEqual({
+      met: false,
+      explanation:
+        "The pipeline stalls for 1 cycle on one test; the goal is 0 or fewer. Look at the pipeline view to see where.",
+    });
+    expect(runChallenge(c.solution, c).goal?.met).toBe(true);
+  });
+
+  it("judges the cache the learner chose", () => {
+    const c = byId("pick-a-cache");
+    const start = runChallenge(c.solution, c);
+    expect(start.passed).toBe(false);
+    expect(start.goal?.explanation).toBe("The hit rate is 65.3%; the goal is at least 80.0%.");
+    const big = runChallenge(c.solution, c, {
+      cache: { blockSize: 4, sets: 4, ways: 1, replacement: "lru", write: "write-back" },
+    });
+    expect(big.goal?.explanation).toBe("This cache holds 16 mailboxes; the goal allows at most 8.");
+    const bad = runChallenge(c.solution, c, {
+      cache: { blockSize: 3, sets: 1, ways: 1, replacement: "lru", write: "write-back" },
+    });
+    expect(bad.goal?.met).toBe(false);
   });
 });

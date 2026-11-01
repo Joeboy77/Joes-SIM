@@ -5,6 +5,12 @@
 import {
   Trace,
   assemble,
+  cachedAccesses,
+  checkCache,
+  memoryAccesses,
+  schedulePipeline,
+  simulateCache,
+  type CacheConfig,
   createState,
   measure,
   run,
@@ -35,6 +41,8 @@ export interface ChallengeResult {
   /** Assembly errors; when there are any, no tests ran. */
   readonly errors: readonly Diagnostic[];
   readonly results: readonly TestResult[];
+  /** For pipeline and cache challenges: whether the performance goal was met, and why. */
+  readonly goal?: { readonly met: boolean; readonly explanation: string };
   readonly passed: boolean;
   /** Scores, when every test passes. */
   readonly scores: Targets | null;
@@ -74,7 +82,16 @@ function explain(
   }
 }
 
-export function runChallenge(source: string, challenge: Challenge): ChallengeResult {
+export interface RunChallengeOptions {
+  /** The cache the learner chose, for cache challenges. */
+  readonly cache?: CacheConfig;
+}
+
+export function runChallenge(
+  source: string,
+  challenge: Challenge,
+  options: RunChallengeOptions = {},
+): ChallengeResult {
   const machine = challenge.machine ?? "classic";
   const assembled = assemble(source, { dialect: challenge.dialect, machine });
   const program = assembled.program;
@@ -135,11 +152,13 @@ export function runChallenge(source: string, challenge: Challenge): ChallengeRes
             ),
     };
   });
-  const passed = results.every((r) => r.pass);
+  const goal = results.every((r) => r.pass) ? checkGoal(challenge, program, options) : undefined;
+  const passed = results.every((r) => r.pass) && (goal?.met ?? true);
   const size = measure(program);
   return {
     errors: [],
     results,
+    ...(goal ? { goal } : {}),
     passed,
     scores: passed
       ? {
@@ -172,4 +191,63 @@ export function meetsTargets(scores: Targets, targets: Targets): Record<keyof Ta
     cycles: scores.cycles <= targets.cycles,
     mailboxes: scores.mailboxes <= targets.mailboxes,
   };
+}
+
+/** The pipeline or cache goal, checked on every test once all of them pass. */
+function checkGoal(
+  challenge: Challenge,
+  program: { memory: readonly number[]; size: number },
+  options: RunChallengeOptions,
+): ChallengeResult["goal"] {
+  const states = challenge.tests.map((test) => {
+    const initial = createState({
+      memory: program.memory,
+      inputs: [...test.inputs],
+      dialect: challenge.dialect,
+      machine: challenge.machine ?? "classic",
+      stackFloor: program.size,
+      keys: test.keys ?? [],
+    });
+    return { initial, final: run(initial, { maxSteps: TEST_STEP_LIMIT }).state };
+  });
+  if (challenge.pipeline) {
+    const { maxStalls, ...settings } = challenge.pipeline;
+    const stalls = states.map(({ initial, final }) => {
+      const trace = new Trace(initial);
+      trace.syncTo(final.cycles);
+      return schedulePipeline(trace.rows, program.memory, settings).stalls.total;
+    });
+    const worst = Math.max(0, ...stalls);
+    return {
+      met: worst <= maxStalls,
+      explanation:
+        worst <= maxStalls
+          ? `The pipeline stalls for ${worst} cycle${worst === 1 ? "" : "s"} at most: the goal is ${maxStalls} or fewer.`
+          : `The pipeline stalls for ${worst} cycle${worst === 1 ? "" : "s"} on one test; the goal is ${maxStalls} or fewer. Look at the pipeline view to see where.`,
+    };
+  }
+  if (challenge.cache) {
+    const config = options.cache ?? challenge.cache.start;
+    const problem = checkCache(config);
+    if (problem) return { met: false, explanation: problem };
+    const size = config.blockSize * config.sets * config.ways;
+    if (size > challenge.cache.maxMailboxes) {
+      return {
+        met: false,
+        explanation: `This cache holds ${size} mailboxes; the goal allows at most ${challenge.cache.maxMailboxes}.`,
+      };
+    }
+    const rates = states.map(
+      ({ initial, final }) =>
+        simulateCache(cachedAccesses(memoryAccesses(initial, final.cycles), config), config).stats
+          .hitRate,
+    );
+    const worst = Math.min(...rates);
+    const pct = (r: number) => `${(r * 100).toFixed(1)}%`;
+    return {
+      met: worst >= challenge.cache.minHitRate,
+      explanation: `The hit rate is ${pct(worst)}${rates.length > 1 ? " on the hardest test" : ""}; the goal is at least ${pct(challenge.cache.minHitRate)}.`,
+    };
+  }
+  return undefined;
 }

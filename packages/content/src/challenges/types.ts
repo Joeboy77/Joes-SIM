@@ -1,4 +1,4 @@
-import type { DialectId, KeyPress } from "@joes-sim/engine";
+import type { CacheConfig, DialectId, KeyPress } from "@joes-sim/engine";
 
 /** Concept tags (brief, 7.8). Every tag is covered by at least one challenge. */
 export const CONCEPTS = [
@@ -16,6 +16,9 @@ export const CONCEPTS = [
   "addressing-modes",
   "interrupts",
   "devices",
+  // Phase 7.
+  "pipelining",
+  "caches",
 ] as const;
 export type Concept = (typeof CONCEPTS)[number];
 
@@ -33,6 +36,8 @@ export const CONCEPT_NAMES: Record<Concept, string> = {
   "addressing-modes": "Indirect and indexed addressing",
   interrupts: "Interrupts",
   devices: "Devices",
+  pipelining: "Pipelining",
+  caches: "Caches",
 };
 
 /** A number is an OUT value; a one-character string is an OTC character. */
@@ -77,4 +82,21 @@ export interface Challenge {
   readonly hints: readonly [string, string, string];
   /** A model solution, shown after a genuine attempt. */
   readonly solution: string;
+  /** Also run on the pipeline, with at most this many stall cycles on every test. */
+  readonly pipeline?: {
+    readonly forwarding: boolean;
+    readonly prediction: boolean;
+    readonly maxStalls: number;
+  };
+  /**
+   * The program is fixed: the learner chooses a cache. Every test must reach the hit rate with a
+   * cache of at most `maxMailboxes`.
+   */
+  readonly cache?: {
+    readonly minHitRate: number;
+    readonly maxMailboxes: number;
+    /** The cache the learner starts from, and one that meets the goal. */
+    readonly start: CacheConfig;
+    readonly solution: CacheConfig;
+  };
 }

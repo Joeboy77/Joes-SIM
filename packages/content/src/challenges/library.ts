@@ -4,6 +4,7 @@
  * solution passes and meets them, and that every starter program does not already pass.
  */
 import { EXTENDED_CHALLENGES } from "./extended";
+import { PERFORMANCE_CHALLENGES } from "./performance";
 import type { Challenge } from "./types";
 
 /** Source text, without the first line break, so programs can be written as indented blocks. */
@@ -1995,4 +1996,6 @@ one     DAT 1
   },
   // ---- The extended machine: stack, subroutines, addressing modes, interrupts, devices ----
   ...EXTENDED_CHALLENGES,
+  // ---- Pipelines and caches ----
+  ...PERFORMANCE_CHALLENGES,
 ];
