@@ -72,7 +72,7 @@ rules of each dialect and machine.
 apps/web/            Next.js app: simulator (/sim), lessons (/learn), challenges, progress, embed
 packages/engine/     Pure TypeScript machines, dialects, assembler, analysis. No UI, no browser APIs
 packages/narration/  Engine events to plain-language sentences
-packages/compiler/   Little Language to LMC compiler
+packages/compiler/   Little Language to LMC compiler, with a line-by-line mapping
 packages/ui/         Shared React components and design tokens
 packages/embed/      The <joes-sim> web component
 packages/content/    Challenges, their test runner, and (later) teacher packs

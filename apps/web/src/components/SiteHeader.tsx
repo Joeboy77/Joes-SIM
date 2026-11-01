@@ -8,6 +8,7 @@ const LINKS = [
   ["/sim", "nav.simulator"],
   ["/learn", "nav.learn"],
   ["/challenges", "nav.challenges"],
+  ["/compiler", "nav.compiler"],
   ["/packs", "nav.packs"],
   ["/progress", "nav.progress"],
 ] as const;

@@ -8,6 +8,7 @@ export const en = {
   "nav.simulator": "Simulator",
   "nav.learn": "Learn",
   "nav.challenges": "Challenges",
+  "nav.compiler": "Compiler",
   "nav.packs": "Packs",
   "nav.progress": "Progress",
   "footer.site": "Site",
