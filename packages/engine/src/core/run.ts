@@ -132,7 +132,10 @@ class LoopDetector {
 
   observe(): InfiniteLoop | null {
     const core = this.core;
+    // With interrupts on, a key press can arrive at any moment and change what happens next,
+    // so a repeating stretch does not prove the program will never stop.
     if (
+      core.ext?.ie ||
       core.inputIndex !== this.inputIndex ||
       core.keyboardReads !== this.keyboardReads ||
       (core.ext?.keyIndex ?? 0) !== this.keyIndex

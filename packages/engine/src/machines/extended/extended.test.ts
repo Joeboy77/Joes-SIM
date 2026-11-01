@@ -253,6 +253,12 @@ describe("interrupts", () => {
     expect(run(ext(m, { keys: s.ext?.keys ?? [] })).state).toEqual(r.state);
   });
 
+  it("a program waiting on interrupts is never called infinite: a key could come at any time", () => {
+    // VEC 06; EI; 03 LDA 08 (period); PUT 20; ... 06 RTI. Repeats every few instructions.
+    const r = run(ext([443, 7, 440, 509, 451, 20, 444, 442, 0, 3]), { maxSteps: 5_000 });
+    expect(r.reason).toBe("budget");
+  });
+
   it("a loop that polls the keyboard is never called infinite", () => {
     // 00 GET 02; BRZ 00; OUT; HLT
     const r = run(ext([450, 2, 700, 902, 0]), { maxSteps: 5_000 });

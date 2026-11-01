@@ -11,7 +11,7 @@ test("a share link opens the exact program, inputs, dialect and view, with a pre
   await page.keyboard.press("ControlOrMeta+a");
   await page.keyboard.press("Delete");
   await content.fill("        INP\n        OTC\n        HLT");
-  const settings = page.getByRole("button", { name: "Speed, dialect and view" });
+  const settings = page.getByRole("button", { name: "Speed, machine, dialect and view" });
   if (await settings.isVisible()) await settings.click();
   await page.getByLabel("Dialect").selectOption("higginson");
   await page.getByLabel("View", { exact: true }).selectOption("story");
@@ -81,7 +81,7 @@ ${PROGRAM}
   await frame.locator(".cm-content").click();
   await page.keyboard.type("XYZ");
   await expect(frame.locator(".cm-content")).toHaveText(before ?? "");
-  const settings = frame.getByRole("button", { name: "Speed, dialect and view" });
+  const settings = frame.getByRole("button", { name: "Speed, machine, dialect and view" });
   if (await settings.isVisible()) await settings.click();
   await frame.getByLabel("Speed").selectOption("instant");
   await frame.getByRole("button", { name: "Run", exact: true }).click();
@@ -103,7 +103,7 @@ test("the embed works in a sandboxed iframe, as learning platforms use", async (
   </body></html>`);
   const frame = page.frameLocator("iframe");
   await expect(frame.locator(".cm-content")).toHaveCount(0); // editor panel not chosen
-  const settings = frame.getByRole("button", { name: "Speed, dialect and view" });
+  const settings = frame.getByRole("button", { name: "Speed, machine, dialect and view" });
   if (await settings.isVisible()) await settings.click();
   await frame.getByLabel("Speed").selectOption("fast");
   await frame.getByRole("button", { name: "Run", exact: true }).click();

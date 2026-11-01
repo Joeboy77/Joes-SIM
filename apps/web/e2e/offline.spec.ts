@@ -65,7 +65,7 @@ test("after one visit, every part of the app works with the network off", async 
   await page.goto(
     `/embed?program=${encodeURIComponent("        INP\n        OUT\n        HLT")}&inputs=6`,
   );
-  const settings = page.getByRole("button", { name: "Speed, dialect and view" });
+  const settings = page.getByRole("button", { name: "Speed, machine, dialect and view" });
   if (await settings.isVisible()) await settings.click();
   await page.getByLabel("Speed").selectOption("instant");
   await page.getByRole("button", { name: "Run", exact: true }).click();

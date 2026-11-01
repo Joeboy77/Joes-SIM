@@ -71,6 +71,7 @@ export class FastCore {
     const p = this.pc;
     const word = this.memory[p] as number;
     if (this.ext && (interruptPending(this.ext) || Math.floor(word / 100) === 4)) {
+      if (word === 444 && this.idle(p)) return "ok";
       return this.execMicro();
     }
     this.currentAddress = p;
@@ -161,6 +162,25 @@ export class FastCore {
     this.cycles++;
     if (this.ext) this.ext = completeExt(this.ext, this.cycles, false).ext;
     return outcome;
+  }
+
+  /**
+   * WAIT idling while the timer runs: by far the most common extended instruction in long runs,
+   * so it has a fast path. It ends exactly where the micro-step machine would.
+   */
+  private idle(p: number): boolean {
+    const ext = this.ext as ExtendedState;
+    if (!ext.ie || ext.timerPending || ext.keyboardPending || ext.devices.timerPeriod === 0) {
+      return false;
+    }
+    this.currentAddress = p;
+    this.mar = p;
+    this.mdr = 444;
+    this.ir = 444;
+    this.microSteps += EXECUTE_START + 1;
+    this.cycles++;
+    this.ext = completeExt(ext, this.cycles, false).ext;
+    return true;
   }
 
   /**

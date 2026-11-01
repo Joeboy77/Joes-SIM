@@ -175,7 +175,7 @@ test("a lesson drives its simulators, asks questions and is marked finished", as
   await page.getByRole("button", { name: "b", exact: true }).click();
   await expect(page.getByText(/✓ Yes\./)).toBeVisible();
   const sim = page.getByRole("region", { name: "The bigger one" });
-  const gear = sim.getByRole("button", { name: "Speed, dialect and view" });
+  const gear = sim.getByRole("button", { name: "Speed, machine, dialect and view" });
   if (await gear.isVisible()) await gear.click();
   await sim.getByLabel("Speed").selectOption("instant");
   await sim.getByRole("button", { name: "Run", exact: true }).click();

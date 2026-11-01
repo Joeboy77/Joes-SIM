@@ -5,7 +5,7 @@ const status = (page: Page) => page.getByRole("status");
 const output = (page: Page) => page.getByRole("list", { name: "Output values" });
 
 async function openSettings(page: Page) {
-  const gear = page.getByRole("button", { name: "Speed, dialect and view" });
+  const gear = page.getByRole("button", { name: "Speed, machine, dialect and view" });
   if ((await gear.isVisible()) && (await gear.getAttribute("aria-expanded")) !== "true")
     await gear.click();
 }
