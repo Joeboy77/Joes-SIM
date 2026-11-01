@@ -13,7 +13,20 @@ import {
   type RvStep,
 } from "@joes-sim/engine";
 import { narrateRv, type Level } from "@joes-sim/narration";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useId, useMemo, useRef, useState } from "react";
+
+/**
+ * The level of the workbench's own headings: under a lesson's h3 title they are h4; on a page of
+ * their own, straight under the h1, they are h2.
+ */
+const SubHeading = createContext<"h2" | "h4">("h4");
+function Sub({ className, children }: { className: string; children: React.ReactNode }) {
+  return useContext(SubHeading) === "h2" ? (
+    <h2 className={className}>{children}</h2>
+  ) : (
+    <h4 className={className}>{children}</h4>
+  );
+}
 
 const hex = (n: number) => `0x${(n >>> 0).toString(16).padStart(8, "0")}`;
 type Stage = "IF" | "ID" | "EX" | "MEM" | "WB";
@@ -120,138 +133,145 @@ export function RiscvWorkbench({
     "min-h-11 rounded-md border border-border-strong bg-surface px-3 text-sm font-bold";
 
   return (
-    <section aria-label={title ?? "RISC-V machine"} className="space-y-3">
-      {title && <h3 className="font-bold">{title}</h3>}
-      <div className={`grid gap-3 ${compact ? "" : "lg:grid-cols-2"}`}>
-        <div className="space-y-1">
-          <label htmlFor={ids.editor} className="block text-sm font-bold">
-            RISC-V assembly
-          </label>
-          <textarea
-            id={ids.editor}
-            value={source}
-            spellCheck={false}
-            rows={compact ? 10 : 18}
-            onChange={(e) => {
-              setSource(e.target.value);
-              onSource?.(e.target.value);
-              // A new program starts a new run.
-              reset();
-            }}
-            className="w-full rounded-md border border-border bg-surface p-2 font-mono text-sm [font-variant-ligatures:none]"
-          />
-          {!program && (
-            <ul role="alert" className="space-y-1 rounded-md border-2 border-danger p-2 text-sm">
-              {assembled.diagnostics.map((d, i) => (
-                <li key={i}>{d.message}</li>
-              ))}
-            </ul>
-          )}
-        </div>
-        {program && <Listing program={program} pc={state.pc} />}
-      </div>
-
-      <div
-        className="flex flex-wrap items-center gap-2"
-        role="toolbar"
-        aria-label="RISC-V run controls"
-      >
-        <button type="button" className={button} onClick={() => reset()}>
-          Reset
-        </button>
-        <button
-          type="button"
-          className={button}
-          onClick={back}
-          disabled={!program || state.steps === 0}
-        >
-          Step back
-        </button>
-        <button
-          type="button"
-          className={button}
-          onClick={step}
-          disabled={
-            !program ||
-            !(ready || (state.status === "waiting-input" && state.inputIndex < state.inputs.length))
-          }
-        >
-          Step
-        </button>
-        <button
-          type="button"
-          className="min-h-11 rounded-md bg-accent px-4 text-sm font-bold text-on-accent"
-          onClick={runAll}
-          disabled={!program || state.status === "halted" || state.status === "error"}
-        >
-          Run
-        </button>
-        <label htmlFor={ids.inputs} className="text-sm text-muted">
-          Inputs
-        </label>
-        <input
-          id={ids.inputs}
-          value={inputText}
-          onChange={(e) => {
-            setInputText(e.target.value);
-            // Inputs given while waiting are added to the run; otherwise the run starts again.
-            if (state.status === "waiting-input")
-              setState({ ...state, inputs: parseInputs(e.target.value) });
-            else reset(e.target.value);
-          }}
-          className="min-h-11 w-32 rounded-sm border border-border-strong bg-surface px-2 font-mono text-sm"
-        />
-      </div>
-      <p role="status" aria-live="polite" className="text-sm">
-        {status}
-      </p>
-
-      {program && (
-        <>
-          <Datapath step={last} stage={stage} onStage={setStage} />
-          <div className="flex flex-wrap items-center gap-2">
-            <h4 className="text-sm font-bold">What just happened</h4>
-            <label htmlFor={ids.level} className="sr-only">
-              Explanation level
+    <SubHeading.Provider value={title ? "h4" : "h2"}>
+      <section aria-label={title ?? "RISC-V machine"} className="space-y-3">
+        {title && <h3 className="font-bold">{title}</h3>}
+        <div className={`grid gap-3 ${compact ? "" : "lg:grid-cols-2"}`}>
+          <div className="min-w-0 space-y-1">
+            <label htmlFor={ids.editor} className="block text-sm font-bold">
+              RISC-V assembly
             </label>
-            <select
-              id={ids.level}
-              value={level}
-              onChange={(e) => setLevel(e.target.value === "technical" ? "technical" : "beginner")}
-              className="min-h-11 rounded-sm border border-border-strong bg-surface px-2 text-sm"
-            >
-              <option value="beginner">Beginner</option>
-              <option value="technical">Technical</option>
-            </select>
-          </div>
-          <p className="rounded-md border border-border bg-surface p-2 text-sm">
-            {last ? narrateRv(last, level) : "Step to see what each instruction does."}
-          </p>
-          <div className={`grid gap-3 ${compact ? "" : "lg:grid-cols-2"}`}>
-            <Registers
-              state={state}
-              written={last?.writeBack?.rd ?? null}
-              showHex={showHex}
-              onHex={setShowHex}
+            <textarea
+              id={ids.editor}
+              value={source}
+              spellCheck={false}
+              rows={compact ? 10 : 18}
+              onChange={(e) => {
+                setSource(e.target.value);
+                onSource?.(e.target.value);
+                // A new program starts a new run.
+                reset();
+              }}
+              className="w-full rounded-md border border-border bg-surface p-2 font-mono text-sm [font-variant-ligatures:none]"
             />
-            <div className="space-y-3">
-              <div>
-                <h4 className="mb-1 text-sm font-bold">Console</h4>
-                <pre
-                  tabIndex={0}
-                  role="region"
-                  aria-label={`Console: ${state.console || "empty"}`}
-                  className="min-h-16 overflow-x-auto rounded-sm bg-[#111] p-2 font-mono text-sm whitespace-pre-wrap text-[#e6ffe6]"
-                >
-                  {state.console || " "}
-                </pre>
-              </div>
-              {!compact && <DataMemory state={state} program={program} />}
-            </div>
+            {!program && (
+              <ul role="alert" className="space-y-1 rounded-md border-2 border-danger p-2 text-sm">
+                {assembled.diagnostics.map((d, i) => (
+                  <li key={i}>{d.message}</li>
+                ))}
+              </ul>
+            )}
           </div>
-        </>
-      )}
-    </section>
+          {program && <Listing program={program} pc={state.pc} />}
+        </div>
+
+        <div
+          className="flex flex-wrap items-center gap-2"
+          role="toolbar"
+          aria-label="RISC-V run controls"
+        >
+          <button type="button" className={button} onClick={() => reset()}>
+            Reset
+          </button>
+          <button
+            type="button"
+            className={button}
+            onClick={back}
+            disabled={!program || state.steps === 0}
+          >
+            Step back
+          </button>
+          <button
+            type="button"
+            className={button}
+            onClick={step}
+            disabled={
+              !program ||
+              !(
+                ready ||
+                (state.status === "waiting-input" && state.inputIndex < state.inputs.length)
+              )
+            }
+          >
+            Step
+          </button>
+          <button
+            type="button"
+            className="min-h-11 rounded-md bg-accent px-4 text-sm font-bold text-on-accent"
+            onClick={runAll}
+            disabled={!program || state.status === "halted" || state.status === "error"}
+          >
+            Run
+          </button>
+          <label htmlFor={ids.inputs} className="text-sm text-muted">
+            Inputs
+          </label>
+          <input
+            id={ids.inputs}
+            value={inputText}
+            onChange={(e) => {
+              setInputText(e.target.value);
+              // Inputs given while waiting are added to the run; otherwise the run starts again.
+              if (state.status === "waiting-input")
+                setState({ ...state, inputs: parseInputs(e.target.value) });
+              else reset(e.target.value);
+            }}
+            className="min-h-11 w-32 rounded-sm border border-border-strong bg-surface px-2 font-mono text-sm"
+          />
+        </div>
+        <p role="status" aria-live="polite" className="text-sm">
+          {status}
+        </p>
+
+        {program && (
+          <>
+            <Datapath step={last} stage={stage} onStage={setStage} />
+            <div className="flex flex-wrap items-center gap-2">
+              <Sub className="text-sm font-bold">What just happened</Sub>
+              <label htmlFor={ids.level} className="sr-only">
+                Explanation level
+              </label>
+              <select
+                id={ids.level}
+                value={level}
+                onChange={(e) =>
+                  setLevel(e.target.value === "technical" ? "technical" : "beginner")
+                }
+                className="min-h-11 rounded-sm border border-border-strong bg-surface px-2 text-sm"
+              >
+                <option value="beginner">Beginner</option>
+                <option value="technical">Technical</option>
+              </select>
+            </div>
+            <p className="rounded-md border border-border bg-surface p-2 text-sm">
+              {last ? narrateRv(last, level) : "Step to see what each instruction does."}
+            </p>
+            <div className={`grid gap-3 ${compact ? "" : "lg:grid-cols-2"}`}>
+              <Registers
+                state={state}
+                written={last?.writeBack?.rd ?? null}
+                showHex={showHex}
+                onHex={setShowHex}
+              />
+              <div className="space-y-3">
+                <div>
+                  <Sub className="mb-1 text-sm font-bold">Console</Sub>
+                  <pre
+                    tabIndex={0}
+                    role="region"
+                    aria-label={`Console: ${state.console || "empty"}`}
+                    className="min-h-16 overflow-x-auto rounded-sm bg-[#111] p-2 font-mono text-sm whitespace-pre-wrap text-[#e6ffe6]"
+                  >
+                    {state.console || " "}
+                  </pre>
+                </div>
+                {!compact && <DataMemory state={state} program={program} />}
+              </div>
+            </div>
+          </>
+        )}
+      </section>
+    </SubHeading.Provider>
   );
 }
 
@@ -267,10 +287,12 @@ function Listing({ program, pc }: { program: RvProgram; pc: number }) {
     list.current?.querySelector('[aria-current="step"]')?.scrollIntoView({ block: "nearest" });
   }, [pc]);
   return (
-    <div className="space-y-1">
-      <h4 className="text-sm font-bold">Assembled program</h4>
+    <div className="min-w-0 space-y-1">
+      <Sub className="text-sm font-bold">Assembled program</Sub>
       <ol
         ref={list}
+        // It scrolls, so it must be reachable by keyboard.
+        tabIndex={0}
         aria-label="Assembled instructions: address, machine code, instruction"
         className="max-h-80 overflow-auto rounded-md border border-border bg-surface py-1 font-mono text-xs [font-variant-ligatures:none]"
       >
@@ -308,7 +330,7 @@ function Registers({
   return (
     <div>
       <div className="mb-1 flex items-center justify-between gap-2">
-        <h4 className="text-sm font-bold">Registers</h4>
+        <Sub className="text-sm font-bold">Registers</Sub>
         <label className="flex min-h-11 items-center gap-2 text-sm">
           <input
             type="checkbox"
@@ -344,7 +366,7 @@ function DataMemory({ state, program }: { state: RvState; program: RvProgram }) 
   const words = Array.from({ length: 16 }, (_, i) => DATA_BASE + i * 4);
   return (
     <div>
-      <h4 className="mb-1 text-sm font-bold">Data memory (from {hex(DATA_BASE)})</h4>
+      <Sub className="mb-1 text-sm font-bold">Data memory (from {hex(DATA_BASE)})</Sub>
       <dl className="grid grid-cols-2 gap-x-3 font-mono text-xs">
         {words.map((a) => (
           <div key={a} className="flex justify-between gap-2">

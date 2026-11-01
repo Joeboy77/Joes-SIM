@@ -45,8 +45,11 @@ export function CompilerWorkbench() {
     () => true,
     () => false,
   );
-  if (!browser) return <p className="text-muted">Loading the compiler…</p>;
-  return <Workbench initial={loadSaved()} />;
+  // The server draws the starter program, so the page does not jump when it loads; the browser
+  // then swaps in the learner's own program.
+  return (
+    <Workbench key={browser ? "saved" : "starter"} initial={browser ? loadSaved() : STARTER} />
+  );
 }
 
 function Workbench({ initial }: { initial: string }) {
@@ -194,7 +197,7 @@ function Inner({
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <section aria-labelledby={`${ids.editor}-h`} className="space-y-1">
+        <section aria-labelledby={`${ids.editor}-h`} className="min-w-0 space-y-1">
           <h2 id={`${ids.editor}-h`} className="font-bold">
             Little Language
           </h2>
@@ -210,7 +213,7 @@ function Inner({
             current={currentSource}
           />
         </section>
-        <section aria-labelledby={`${ids.editor}-lmc`} className="space-y-1">
+        <section aria-labelledby={`${ids.editor}-lmc`} className="min-w-0 space-y-1">
           <h2 id={`${ids.editor}-lmc`} className="font-bold">
             Generated LMC
           </h2>

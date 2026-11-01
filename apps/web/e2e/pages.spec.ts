@@ -20,6 +20,19 @@ const PAGES = [
   { path: "/about", heading: "About Joe's SIM" },
   { path: "/privacy", heading: "Privacy" },
   { path: "/contribute", heading: "Contribute" },
+  // Phases 6 to 11.
+  { path: "/learn/interrupts-and-devices", heading: "Interrupts and devices" },
+  { path: "/learn/pipelining", heading: "Pipelining" },
+  { path: "/learn/races-and-locks", heading: "Many cores: races and locks" },
+  { path: "/learn/lmc-to-riscv", heading: "From LMC to RISC-V" },
+  { path: "/challenges/pick-a-cache", heading: "Choose a cache that hits 80%" },
+  { path: "/compiler", heading: "Little Language compiler" },
+  { path: "/riscv", heading: "RISC-V" },
+  { path: "/machines", heading: "Machine designer" },
+  { path: "/gallery", heading: "Gallery" },
+  { path: "/docs/sharing", heading: "Sharing and backups" },
+  { path: "/docs/offline", heading: "Offline and installing" },
+  { path: "/docs/packs", heading: "Teacher packs" },
 ];
 const THEMES = ["light", "dark", "high-contrast"] as const;
 

@@ -9,6 +9,11 @@ const PAGES = [
   "/reference",
   "/progress",
   "/docs/embed",
+  "/learn/lmc-to-riscv",
+  "/compiler",
+  "/riscv",
+  "/machines",
+  "/gallery",
 ];
 
 test.describe("reflow at 320 CSS pixels (WCAG 2.2, 1.4.10)", () => {
