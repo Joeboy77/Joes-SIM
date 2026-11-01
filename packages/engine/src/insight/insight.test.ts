@@ -8,7 +8,7 @@ import {
   type RunCondition,
 } from "../core/conditions";
 import { run } from "../core/run";
-import { createState } from "../core/state";
+import { createState, pressKey } from "../core/state";
 import { step } from "../core/step";
 import type { DialectId } from "../dialects/types";
 import { FastCore } from "../machines/classic/fast";
@@ -17,15 +17,21 @@ import { numberViews } from "./numbers";
 import { detectRuntime, type RuntimeFindingCode } from "./runtime";
 import { Trace, mailboxColumn, usageOf } from "./trace";
 
+const EXTENDED = /\b(PUSH|POP|CALL|RET|EI|VEC|WAIT|RTI|PUT|GET)\b|@/;
 const build = (source: string, dialect: DialectId = "higginson"): Program => {
-  const r = assemble(source, { dialect });
+  const r = assemble(source, { dialect, machine: EXTENDED.test(source) ? "extended" : "classic" });
   if (!r.program) throw new Error(JSON.stringify(r.diagnostics));
   return r.program;
 };
 
 function traced(source: string, inputs: number[], dialect: DialectId = "higginson") {
   const program = build(source, dialect);
-  const initial = createState({ memory: program.memory, inputs, dialect });
+  const initial = createState({
+    memory: program.memory,
+    inputs,
+    dialect,
+    ...(program.machine ? { machine: program.machine, stackFloor: program.size } : {}),
+  });
   const result = run(initial, { maxSteps: 10_000 });
   const trace = new Trace(initial);
   trace.syncTo(result.state.cycles);
@@ -339,7 +345,93 @@ const RUNTIME: Record<
     ],
     clean: [source("add"), [3, 4]],
   },
+  "stack-overwritten": {
+    triggers: [
+      ["        LDA v\n        PUSH\n        STA 99\n        HLT\nv       DAT 5", []],
+      ["        CALL s\n        HLT\ns       STA 99\n        RET", []],
+    ],
+    clean: [
+      "        LDA v\n        PUSH\n        POP\n        STA 99\n        HLT\nv       DAT 5",
+      [],
+    ],
+  },
+  "machine-error": {
+    triggers: [
+      ["        POP\n        HLT", []],
+      ["        LDA @p\n        HLT\np       DAT 150", []],
+    ],
+    clean: [source("add"), [3, 4]],
+  },
 };
+
+describe("tracing the extended machine", () => {
+  const timer = `
+        VEC tick
+        LDA period
+        PUT 20
+        EI
+idle    WAIT
+        BRA idle
+tick    LDA count
+        ADD one
+        STA count
+        SUB two
+        BRZ done
+        RTI
+done    HLT
+period  DAT 4
+count   DAT 0
+one     DAT 1
+two     DAT 2`;
+
+  it("records SP, X and IE, interrupt entries and devices", () => {
+    const { trace, result } = traced(timer, [], "classic");
+    expect(result.reason).toBe("halted");
+    const int = trace.rows.find((r) => r.mnemonic === "INT");
+    expect(int).toMatchObject({
+      interrupt: "timer",
+      ie: false,
+      sp: 97,
+      stack: { pushed: 3, popped: 0 },
+    });
+    expect(trace.rows.find((r) => r.mnemonic === "PUT")?.device).toEqual({
+      port: 20,
+      device: "timer",
+      value: 4,
+      direction: "write",
+    });
+    expect(trace.rows.find((r) => r.mnemonic === "RTI")).toMatchObject({ sp: 100, ie: true });
+    // The second mailbox of VEC counts as part of the instruction, not as data.
+    expect(trace.executed[1]).toBe(1);
+    expect(trace.reads[1]).toBe(0);
+  });
+
+  it("replays key presses typed during the run", () => {
+    const echo = `
+        VEC key
+        EI
+idle    WAIT
+        BRA idle
+key     GET 2
+        OUT
+        RTI`;
+    const program = build(echo, "classic");
+    const initial = createState({
+      memory: program.memory,
+      dialect: "classic",
+      machine: "extended",
+      stackFloor: program.size,
+    });
+    let live = run(initial).state;
+    live = run(pressKey(live, 72)).state;
+    live = run(pressKey(live, 73)).state;
+    expect(live.outputs.map((o) => o.value)).toEqual([72, 73]);
+    const trace = new Trace(initial);
+    trace.setKeys(live.ext?.keys ?? []);
+    trace.syncTo(live.cycles);
+    expect(trace.rows.filter((r) => r.mnemonic === "OUT").map((r) => r.acc)).toEqual([72, 73]);
+  });
+});
 
 const runtimeFindings = (src: string, inputs: number[]) => {
   const { program, result, trace } = traced(src, inputs);

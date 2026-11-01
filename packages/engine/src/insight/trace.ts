@@ -11,6 +11,7 @@ import type { AnyMnemonic } from "../dialects/types";
 import type { EngineEvent } from "../core/events";
 import { step } from "../core/step";
 import { MEMORY_SIZE, type MachineState, type OutputItem } from "../core/types";
+import type { KeyPress } from "../machines/extended/types";
 
 export interface TraceRow {
   /** 1-based instruction number, as in an exam trace table. */
@@ -28,6 +29,23 @@ export interface TraceRow {
   readonly output?: OutputItem;
   readonly branch?: { readonly taken: boolean; readonly target: number };
   readonly alu?: { readonly operation: "add" | "sub"; readonly wrapped: boolean };
+  /** The extended machine's registers after the instruction. */
+  readonly sp?: number;
+  readonly x?: number;
+  readonly ie?: boolean;
+  /** The device port the instruction read or wrote. */
+  readonly device?: {
+    readonly port: number;
+    readonly device: string;
+    readonly value: number;
+    readonly direction: "read" | "write";
+  };
+  /** Values pushed onto (positive count) or popped off the stack. */
+  readonly stack?: { readonly pushed: number; readonly popped: number };
+  /** For an interrupt entry (mnemonic INT): what interrupted. */
+  readonly interrupt?: "timer" | "keyboard";
+  /** 2 for an instruction whose address or port is in the next mailbox. */
+  readonly words?: 2;
 }
 
 export interface TraceOptions {
@@ -83,6 +101,14 @@ export class Trace {
     this.keyframes = this.keyframes.map((k) => ({ ...k, inputs }));
   }
 
+  /** Key presses only ever grow, like inputs: replays need keys typed during the run. */
+  setKeys(keys: readonly KeyPress[]): void {
+    const withKeys = (s: MachineState): MachineState =>
+      s.ext && s.ext.keys !== keys ? { ...s, ext: { ...s.ext, keys } } : s;
+    this.head = withKeys(this.head);
+    this.keyframes = this.keyframes.map(withKeys);
+  }
+
   /** Records instructions until `cycle` instructions have completed, or the machine stops. */
   syncTo(cycle: number): void {
     const target = Math.min(cycle, this.maxRows);
@@ -131,13 +157,31 @@ export class Trace {
       acc: after.acc,
       negative: after.negative,
       pc: after.pc,
+      ...(after.ext ? { sp: after.ext.sp, x: after.ext.x, ie: after.ext.ie } : {}),
     };
-    let fetched = false;
+    const entry = complete.mnemonic === "INT";
+    const twoWord = events.filter((e) => e.type === "pc-increment").length > 1;
+    if (twoWord) row.words = 2;
+    let fetched = entry;
+    let pushed = 0;
+    let popped = 0;
     for (const e of events) {
       if (e.type === "memory-read") {
-        // The first read fetches the instruction itself; any later one reads an operand.
-        if (fetched) row.read = { address: e.address, value: e.value };
+        // The first read fetches the instruction itself, and the second mailbox of a
+        // two-mailbox instruction is part of it too; any other read is of an operand.
+        const ownWord = e.address === (complete.address + 1) % MEMORY_SIZE && !row.read;
+        if (fetched && !(ownWord && twoWord)) row.read = { address: e.address, value: e.value };
         fetched = true;
+      } else if (e.type === "stack-push") pushed++;
+      else if (e.type === "stack-pop") popped++;
+      else if (e.type === "interrupt-enter") row.interrupt = e.source;
+      else if (e.type === "device-read" || e.type === "device-write") {
+        row.device = {
+          port: e.port,
+          device: e.device,
+          value: e.value,
+          direction: e.type === "device-read" ? "read" : "write",
+        };
       } else if (e.type === "memory-write") {
         row.write = { address: e.address, previous: e.previous, value: e.value };
       } else if (e.type === "input") row.input = e.value;
@@ -145,6 +189,7 @@ export class Trace {
       else if (e.type === "branch") row.branch = { taken: e.taken, target: e.target };
       else if (e.type === "alu") row.alu = { operation: e.operation, wrapped: e.wrapped };
     }
+    if (pushed || popped) row.stack = { pushed, popped };
     this._rows.push(row);
     this.count(row, 1);
     this.head = after;
@@ -157,6 +202,7 @@ export class Trace {
 
   private count(row: TraceRow, by: 1 | -1): void {
     (this.executed[row.address] as number) += by;
+    if (row.words === 2) (this.executed[(row.address + 1) % MEMORY_SIZE] as number) += by;
     if (row.read) (this.reads[row.read.address] as number) += by;
     if (row.write) (this.writes[row.write.address] as number) += by;
     if (row.mnemonic !== "HLT") {

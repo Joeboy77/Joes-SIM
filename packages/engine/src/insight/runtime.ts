@@ -5,7 +5,7 @@
  */
 import type { Program } from "../assembler/types";
 import type { InfiniteLoop } from "../core/run";
-import type { MachineState } from "../core/types";
+import type { MachineErrorCode, MachineState } from "../core/types";
 import type { Trace, TraceRow } from "./trace";
 
 export type RuntimeFindingCode =
@@ -14,7 +14,10 @@ export type RuntimeFindingCode =
   | "input-ran-out"
   | "inputs-left-over"
   | "infinite-loop"
-  | "invalid-instruction";
+  | "invalid-instruction"
+  // The extended machine.
+  | "stack-overwritten"
+  | "machine-error";
 
 export interface RuntimeFinding {
   readonly code: RuntimeFindingCode;
@@ -189,7 +192,48 @@ export function detectRuntime(
     });
   }
 
-  if (state.status === "error" && state.error) {
+  // A store into the live part of the stack (extended machine).
+  for (const r of rows) {
+    const store = r.mnemonic === "STA" || r.mnemonic === "STX";
+    if (!store || !r.write || r.sp === undefined || r.write.address < r.sp) continue;
+    findings.push({
+      code: "stack-overwritten",
+      severity: "warning",
+      ...at(r.address),
+      message: `Mailbox ${pad(r.write.address)} is on the stack and was overwritten at step ${r.step}.`,
+      explanation:
+        "The stack grows down from mailbox 99, and everything from the stack pointer up holds values the program still needs: saved return addresses, or values it will POP. Storing there changes them.",
+      hints: [
+        `What is mailbox ${pad(r.write.address)} used for?`,
+        `At step ${r.step} the stack pointer was ${pad(r.sp)}, so mailboxes ${pad(r.sp)} to 99 belonged to the stack.`,
+        "Keep your data below the stack, or use fewer stack entries.",
+      ],
+      cause: { ...beforeRow(r), label: `Go to step ${r.step}, where the stack was overwritten` },
+    });
+    break;
+  }
+
+  if (state.status === "error" && state.error && state.error.code !== "invalid-instruction") {
+    const { address, code, message } = state.error;
+    const cameFrom = rows.at(-1);
+    findings.push({
+      code: "machine-error",
+      severity: "error",
+      ...at(address),
+      message,
+      explanation: ERROR_EXPLANATIONS[code] ?? "",
+      hints: [
+        `What was the instruction ${onLine(address)} trying to do?`,
+        cameFrom
+          ? `The instruction before it was in mailbox ${pad(cameFrom.address)}, at step ${cameFrom.step}.`
+          : "It was the first instruction the program ran.",
+        ERROR_FIXES[code] ?? "Step back to just before the error and watch what changes.",
+      ],
+      ...(cameFrom
+        ? { cause: { ...beforeRow(cameFrom), label: `Go to step ${cameFrom.step}, just before` } }
+        : {}),
+    });
+  } else if (state.status === "error" && state.error) {
     const { address, value } = state.error;
     const written = lastWrite(address, rows.length);
     const cameFrom = rows.at(-1);
@@ -222,3 +266,24 @@ export function detectRuntime(
 
   return findings;
 }
+
+const ERROR_EXPLANATIONS: Partial<Record<MachineErrorCode, string>> = {
+  "address-out-of-range":
+    "Indirect and indexed addressing work out an address while the program runs. Here it came out outside 00 to 99, where there are no mailboxes.",
+  "stack-overflow":
+    "The stack grows down from mailbox 99 towards your program. One more value would have overwritten the program itself, so the machine stopped.",
+  "stack-underflow": "POP, RET and RTI take a value off the stack, but the stack was empty.",
+  "device-error":
+    "GET and PUT talk to a device through a port. This port, or this value, does not work.",
+  "wait-forever":
+    "WAIT sleeps until a device interrupts, but interrupts were off, so nothing could ever wake the machine.",
+};
+
+const ERROR_FIXES: Partial<Record<MachineErrorCode, string>> = {
+  "address-out-of-range": "Check the pointer's value, or that X stays within the table.",
+  "stack-overflow":
+    "Look for a loop that keeps pushing or calling without taking values off, or recursion that never stops.",
+  "stack-underflow": "Make every POP and RET match an earlier PUSH or CALL.",
+  "device-error": "Check the port number and the range of values it takes on the reference page.",
+  "wait-forever": "Turn interrupts on with EI (and set VEC) before WAIT.",
+};
