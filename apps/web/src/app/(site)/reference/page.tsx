@@ -1,4 +1,13 @@
-import { DIALECTS, DIALECT_IDS, encode, type Mnemonic } from "@joes-sim/engine";
+import {
+  DIALECTS,
+  DIALECT_IDS,
+  PORTS,
+  encode,
+  encodeExt,
+  type AddressMode,
+  type ExtMnemonic,
+  type Mnemonic,
+} from "@joes-sim/engine";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -71,6 +80,80 @@ const INSTRUCTIONS: { m: Mnemonic; operand: boolean; does: string; flag: string 
   },
   { m: "HLT", operand: false, does: "Stops the machine.", flag: "No change." },
 ];
+
+/** The extended machine's instructions (docs/specs/extended.md). */
+const EXTENDED: {
+  m: ExtMnemonic | "LDA" | "STA" | "ADD" | "SUB";
+  mode?: AddressMode;
+  written: string;
+  does: string;
+}[] = [
+  {
+    m: "PUSH",
+    written: "PUSH",
+    does: "SP goes down by one; the accumulator is put on top of the stack.",
+  },
+  {
+    m: "POP",
+    written: "POP",
+    does: "The top of the stack goes into the accumulator; SP goes up by one.",
+  },
+  {
+    m: "CALL",
+    written: "CALL a",
+    does: "Pushes the return address (the next instruction) and goes to the subroutine at a.",
+  },
+  { m: "RET", written: "RET", does: "Pops the return address into the program counter." },
+  { m: "LDX", written: "LDX a", does: "Loads the index register X from mailbox a." },
+  { m: "STX", written: "STX a", does: "Stores X in mailbox a." },
+  { m: "INX", written: "INX", does: "Adds one to X." },
+  { m: "DEX", written: "DEX", does: "Takes one from X." },
+  {
+    m: "LDA",
+    mode: "indirect",
+    written: "LDA @a",
+    does: "Indirect: loads from the mailbox whose address is in mailbox a. STA, ADD and SUB work the same way (421 to 423).",
+  },
+  {
+    m: "LDA",
+    mode: "indexed",
+    written: "LDA a,X",
+    does: "Indexed: loads from mailbox a + X. STA, ADD and SUB work the same way (431 to 433).",
+  },
+  { m: "EI", written: "EI", does: "Turns interrupts on." },
+  { m: "DI", written: "DI", does: "Turns interrupts off." },
+  {
+    m: "RTI",
+    written: "RTI",
+    does: "Returns from an interrupt: pops the flag, the accumulator and the program counter, and turns interrupts back on.",
+  },
+  { m: "VEC", written: "VEC a", does: "Interrupts will run the handler at mailbox a." },
+  {
+    m: "WAIT",
+    written: "WAIT",
+    does: "Waits until an interrupt is pending. An error if interrupts are off.",
+  },
+  { m: "GET", written: "GET p", does: "Reads device port p into the accumulator." },
+  { m: "PUT", written: "PUT p", does: "Sends the accumulator to device port p." },
+];
+
+const PORT_DETAILS: Record<number, string> = {
+  1: "Shows the character with this code (32 to 126); 10 starts a new line, 12 clears.",
+  2: "The next key code from the buffer, or 0 if it is empty.",
+  3: "How many keys are waiting (0 to 8).",
+  10: "Chooses a pixel, 0 to 255 (row × 16 + column).",
+  11: "PUT colours the chosen pixel (0 to 15) and moves to the next; GET reads its colour.",
+  12: "Fills the whole display with a colour (0 to 15).",
+  20: "A timer interrupt every n instructions (1 to 999); 0 turns the timer off.",
+  21: "Instructions left until the next tick.",
+  30: "Shows a number, −999 to 999.",
+  31: "Lights segments of digit 1 directly (0 to 127, bit 0 is segment a).",
+  32: "Lights segments of digit 2.",
+  33: "Lights segments of digit 3.",
+  40: "Plays a note, 1 to 88 (piano keys; 49 is A above middle C); 0 is silence.",
+  41: "Length of the next notes, in tenths of a second (1 to 20).",
+  50: "What caused the last interrupt: 1 timer, 2 keyboard.",
+};
 
 const code = (m: Mnemonic, operand: boolean) => {
   const n = encode(m, 0);
@@ -208,6 +291,107 @@ export default function ReferencePage() {
           <Link href="/docs/getting-started" className="text-accent underline">
             getting started
           </Link>
+          .
+        </p>
+      </section>
+
+      <section aria-labelledby="extended-h" className="space-y-4">
+        <h2 id="extended-h" className="text-2xl font-bold">
+          The extended machine
+        </h2>
+        <p className="max-w-2xl">
+          Choose <strong>Machine: Extended</strong> in the simulator for a stack, subroutines,
+          indirect and indexed addressing, interrupts and devices. Every classic program runs on it
+          unchanged. The new instructions start with 4; one that needs an address (a) or a port (p)
+          keeps it in the next mailbox, so it takes two mailboxes. The stack grows down from mailbox
+          99.
+        </p>
+        <div
+          className="overflow-x-auto"
+          role="region"
+          aria-label="Extended instructions, scrollable"
+          tabIndex={0}
+        >
+          <table className="w-full min-w-[36rem] border-collapse text-sm">
+            <caption className="mb-2 text-start text-lg font-bold">Extended instructions</caption>
+            <thead>
+              <tr className="text-start">
+                <th scope="col" className="border-b-2 border-border-strong p-2">
+                  Code
+                </th>
+                <th scope="col" className="border-b-2 border-border-strong p-2">
+                  Written
+                </th>
+                <th scope="col" className="border-b-2 border-border-strong p-2">
+                  What it does
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {EXTENDED.map(({ m, mode, written, does }) => (
+                <tr key={written}>
+                  <td className="border-b border-border p-2 font-mono">
+                    {encodeExt(m, mode)}
+                    {written.includes(" ") ? " + a" : ""}
+                  </td>
+                  <th scope="row" className="border-b border-border p-2 text-start font-mono">
+                    {written}
+                  </th>
+                  <td className="border-b border-border p-2">{does}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div
+          className="overflow-x-auto"
+          role="region"
+          aria-label="Device ports, scrollable"
+          tabIndex={0}
+        >
+          <table className="w-full min-w-[36rem] border-collapse text-sm">
+            <caption className="mb-2 text-start text-lg font-bold">Device ports</caption>
+            <thead>
+              <tr className="text-start">
+                <th scope="col" className="border-b-2 border-border-strong p-2">
+                  Port
+                </th>
+                <th scope="col" className="border-b-2 border-border-strong p-2">
+                  Device
+                </th>
+                <th scope="col" className="border-b-2 border-border-strong p-2">
+                  Use with
+                </th>
+                <th scope="col" className="border-b-2 border-border-strong p-2">
+                  Meaning
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {Object.entries(PORTS).map(([port, p]) => (
+                <tr key={port}>
+                  <th scope="row" className="border-b border-border p-2 text-start font-mono">
+                    {port.padStart(2, "0")}
+                  </th>
+                  <td className="border-b border-border p-2">{p.device}</td>
+                  <td className="border-b border-border p-2 font-mono">
+                    {[p.read && "GET", p.write && "PUT"].filter(Boolean).join(", ")}
+                  </td>
+                  <td className="border-b border-border p-2">{PORT_DETAILS[Number(port)]}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="text-sm text-muted">
+          The full design is in the{" "}
+          <a
+            href="https://github.com/Joeboy77/Joes-SIM/blob/main/docs/specs/extended.md"
+            className="text-accent underline"
+          >
+            extended machine specification
+          </a>
           .
         </p>
       </section>
