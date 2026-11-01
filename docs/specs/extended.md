@@ -1,7 +1,7 @@
 # The extended machine
 
-**Status: draft for review.** Nothing here is built yet (brief, Phase 6). Each choice marked
-**open** is a question for the reviewer; the rest are proposals that can still change.
+**Status: approved** (reviewed 1 November 2026, with the answers below to the open questions).
+See [decision 0034](../decisions/0034-extended-machine.md).
 
 The extended machine adds the following to the classic machine in [classic.md](classic.md):
 
@@ -423,18 +423,12 @@ values, in mailboxes 97 to 99.
 - **End-to-end test.** A program draws on the pixel display, reads the keyboard and responds to
   timer interrupts in the app (Phase 6 acceptance).
 
-## Open questions for review
+## Questions settled at review
 
-1. **Port I/O or memory-mapped I/O?** This draft uses ports, because the devices do not fit in
-   100 mailboxes. Memory-mapped I/O is the other common model. It could be shown with a few
-   device mailboxes (for example 90 to 99), but that would cost a tenth of memory and change
-   the meaning of classic programs that store data there.
-2. **The `GET` and `PUT` names.** We chose them because they read as plain English. `IN` and
-   `OUT` are closer to x86, but `OUT` would clash with the classic OUT (902).
-3. **One interrupt vector with a cause port, or one vector per device?** This draft uses one
-   vector and a cause port. A vector per device is simpler for beginners, but needs a vector
-   table.
-4. **Indirect branches.** `BRA @a` would allow jump tables and computed returns. Leave them out
-   for now?
-5. **Index register.** X needs four instructions here (LDX, STX, INX, DEX). Should there also be
-   transfers between X and ACC (TAX, TXA)?
+The reviewer approved the draft as written, so each open question takes the draft's answer:
+
+1. **Port I/O.** Devices are reached through ports, and all 100 mailboxes stay memory.
+2. **GET and PUT** are the names, so the classic OUT keeps its one meaning.
+3. **One vector with a cause port** (port 50).
+4. **No indirect branches** in this version. A later phase can add `BRA @a` in the free 4xx space.
+5. **No TAX or TXA.** LDX, STX, INX and DEX are enough for every Phase 6 lesson.
