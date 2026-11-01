@@ -73,7 +73,7 @@ All bodies are JSON. Errors are `{ "error": "<a sentence for the learner>" }` wi
 | `GET /admin/reported`           | header `Authorization: Bearer <ADMIN_TOKEN>` | reported programs and reasons               |
 | `POST /admin/moderate`          | see below                                    | `{ changed }`                               |
 
-`GET` requests send `X-Player-Key` when the browser has a key, so that answers can mark the
+`GET` requests send `X-Player-Key` only when the browser already has a key (reading never makes one), so that answers can mark the
 player's own entries (`mine`).
 
 Moderation bodies:

@@ -28,7 +28,7 @@ and challenges keep working fully without them. The project owner chose Cloudfla
   moderator token unlocks `/admin`.
 - **Switched on by one setting.** The web app shows the leaderboard, the gallery link, short links
   and publishing only when built with `NEXT_PUBLIC_COMMUNITY_API`. Without it, the site is exactly
-  as before. When the API cannot be reached, each feature says so in a sentence, and nothing else
+  as before. Nothing is sent until the learner asks: a challenge page loads its leaderboard only after **Show the leaderboard** is pressed, and viewing never creates a player key. When the API cannot be reached, each feature says so in a sentence, and nothing else
   is affected.
 - **Tests run against real D1:**
   - Unit tests use Wrangler's local platform (Miniflare).
