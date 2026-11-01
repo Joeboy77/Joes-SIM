@@ -395,6 +395,32 @@ export default function ReferencePage() {
           .
         </p>
       </section>
+
+      <section aria-labelledby="multicore-h" className="space-y-3">
+        <h2 id="multicore-h" className="text-2xl font-bold">
+          The multicore machine
+        </h2>
+        <p className="max-w-2xl">
+          Choose <strong>Machine: Multicore</strong> for two to four cores sharing the mailboxes.
+          Each core runs the classic instructions; core 1, 2 and 3 start at the labels{" "}
+          <code className="rounded-sm bg-surface-2 px-1 font-mono">core1</code> to{" "}
+          <code className="rounded-sm bg-surface-2 px-1 font-mono">core3</code>, and core 0 at 00.
+          One instruction of one core runs per step, in the order the schedule chooses.
+        </p>
+        <p className="max-w-2xl">
+          <code className="rounded-sm bg-surface-2 px-1 font-mono">TAS a</code> (code 460 + a, two
+          mailboxes) <strong>tests and sets</strong> a lock in one step: the accumulator gets the
+          mailbox&apos;s old value and the mailbox becomes 1. A result of 0 means the lock was free
+          and is now yours; write 0 back to release it. See the{" "}
+          <a
+            href="https://github.com/Joeboy77/Joes-SIM/blob/main/docs/specs/multicore.md"
+            className="text-accent underline"
+          >
+            multicore specification
+          </a>
+          .
+        </p>
+      </section>
     </div>
   );
 }

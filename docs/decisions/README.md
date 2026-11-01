@@ -40,3 +40,4 @@ One file per decision, named `NNNN-short-title.md`, each with four headings:
 | 0033 | [Performance](0033-performance.md)                                                   |
 | 0034 | [The extended machine](0034-extended-machine.md)                                     |
 | 0035 | [The pipeline and the cache are timing models](0035-pipeline-and-cache.md)           |
+| 0036 | [The multicore machine](0036-multicore.md)                                           |

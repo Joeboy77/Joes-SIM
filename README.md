@@ -62,8 +62,9 @@ for every register transfer, records history for stepping backwards, proves when
 never stop, and assembles with plain-language diagnostics. The extended machine adds a stack,
 subroutines, indirect and indexed addressing, interrupts and six virtual devices, and runs every
 classic program unchanged. The pipeline and cache views show how the same run would time on a
-five-stage pipeline and through a configurable cache. See [docs/specs](docs/specs/) for the exact
-rules of each dialect, the extended machine, the pipeline and the cache.
+five-stage pipeline and through a configurable cache. The multicore machine runs two to four
+Little Men on shared mailboxes, with seeded scheduling, a test-and-set lock and race detection. See [docs/specs](docs/specs/) for the exact
+rules of each dialect and machine.
 
 ## Repository layout
 
