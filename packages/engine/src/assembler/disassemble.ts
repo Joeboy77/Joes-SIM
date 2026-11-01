@@ -87,12 +87,12 @@ export function disassemble(memory: readonly number[], options: DisassembleOptio
   for (let address = 0; address < length; address++) {
     // The last mailbox has no next one, so a two-mailbox instruction there is just data.
     const word = disassembleWord(
-      memory[address] ?? 0,
+      memory[address] as number,
       options.dialect,
       address + 1 < memory.length
         ? {
             ...(options.machine ? { machine: options.machine } : {}),
-            next: memory[address + 1] ?? 0,
+            next: memory[address + 1] as number,
           }
         : {},
     );

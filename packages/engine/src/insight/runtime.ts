@@ -221,13 +221,13 @@ export function detectRuntime(
       severity: "error",
       ...at(address),
       message,
-      explanation: ERROR_EXPLANATIONS[code] ?? "",
+      explanation: ERROR_EXPLANATIONS[code as ExtErrorCode],
       hints: [
         `What was the instruction ${onLine(address)} trying to do?`,
         cameFrom
           ? `The instruction before it was in mailbox ${pad(cameFrom.address)}, at step ${cameFrom.step}.`
           : "It was the first instruction the program ran.",
-        ERROR_FIXES[code] ?? "Step back to just before the error and watch what changes.",
+        ERROR_FIXES[code as ExtErrorCode],
       ],
       ...(cameFrom
         ? { cause: { ...beforeRow(cameFrom), label: `Go to step ${cameFrom.step}, just before` } }
@@ -267,7 +267,9 @@ export function detectRuntime(
   return findings;
 }
 
-const ERROR_EXPLANATIONS: Partial<Record<MachineErrorCode, string>> = {
+type ExtErrorCode = Exclude<MachineErrorCode, "invalid-instruction">;
+
+const ERROR_EXPLANATIONS: Record<ExtErrorCode, string> = {
   "address-out-of-range":
     "Indirect and indexed addressing work out an address while the program runs. Here it came out outside 00 to 99, where there are no mailboxes.",
   "stack-overflow":
@@ -279,7 +281,7 @@ const ERROR_EXPLANATIONS: Partial<Record<MachineErrorCode, string>> = {
     "WAIT sleeps until a device interrupts, but interrupts were off, so nothing could ever wake the machine.",
 };
 
-const ERROR_FIXES: Partial<Record<MachineErrorCode, string>> = {
+const ERROR_FIXES: Record<ExtErrorCode, string> = {
   "address-out-of-range": "Check the pointer's value, or that X stays within the table.",
   "stack-overflow":
     "Look for a loop that keeps pushing or calling without taking values off, or recursion that never stops.",

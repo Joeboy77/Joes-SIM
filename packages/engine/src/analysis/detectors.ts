@@ -54,7 +54,7 @@ export function analyse(program: Program, options: AnalyseOptions = {}): Finding
   // On the extended machine 4xx words are not classic instructions.
   const decoded = program.memory.map((v, a) => (ext[a] ? null : decode(v, dialect)));
   const reachableCode = range().filter((a) => cfg.reachable[a]);
-  const operandOf = (a: number) => program.memory[(a + 1) % MEMORY_SIZE] ?? 0;
+  const operandOf = (a: number) => program.memory[(a + 1) % MEMORY_SIZE] as number;
   const storesTo = new Set(
     reachableCode.flatMap((a) => {
       const d = decoded[a];
@@ -211,7 +211,7 @@ function extendedChecks(
   const memory = program.memory;
   const lineOf = (a: number) => program.addressToLine[a] ?? undefined;
   const is = (a: number, m: string) => ext[a]?.mnemonic === m && !ext[a]?.mode;
-  const target = (a: number) => memory[(a + 1) % MEMORY_SIZE] ?? 0;
+  const target = (a: number) => memory[(a + 1) % MEMORY_SIZE] as number;
 
   // Addresses reached from `start` without entering subroutines (CALL carries on after itself).
   const walk = (start: number): Set<number> => {

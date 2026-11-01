@@ -60,12 +60,12 @@ export function successors(
   dialect: DialectId,
   extended = false,
 ): Successor[] {
-  const word = memory[address] ?? 0;
+  const word = memory[address] as number;
   const next = (address + 1) % MEMORY_SIZE;
   const ext = extended ? decodeExt(word) : null;
   if (ext) {
     const after = (address + ext.words) % MEMORY_SIZE;
-    const target = memory[next] ?? 0;
+    const target = memory[next] as number;
     const valid = target >= 0 && target < MEMORY_SIZE;
     if (ext.mnemonic === "RET" || ext.mnemonic === "RTI") return [];
     if (ext.mnemonic === "CALL" && valid) {
@@ -97,7 +97,7 @@ export function successors(
 
 /** Whether the instruction at `address` ends a subroutine or interrupt handler. */
 function returns(memory: readonly number[], address: number, extended: boolean): boolean {
-  const m = extended ? decodeExt(memory[address] ?? 0)?.mnemonic : undefined;
+  const m = extended ? decodeExt(memory[address] as number)?.mnemonic : undefined;
   return m === "RET" || m === "RTI";
 }
 

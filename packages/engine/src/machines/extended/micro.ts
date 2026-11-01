@@ -73,7 +73,7 @@ function push(
   const sp = ext.sp - 1;
   if (sp < ext.stackFloor || sp < 0) return null;
   const memory = state.memory.slice();
-  const previous = memory[sp] ?? 0;
+  const previous = memory[sp] as number;
   memory[sp] = value;
   return {
     memory,
@@ -114,7 +114,7 @@ export function interruptStep(state: MachineState): MicroResult {
     );
   }
   if (index <= 3) {
-    const saves = (["PC", "ACC", "flag"] as const)[index - 1] ?? "flag";
+    const saves = (["PC", "ACC", "flag"] as const)[index - 1] as "PC" | "ACC" | "flag";
     const value = saves === "PC" ? state.pc : saves === "ACC" ? state.acc : state.negative ? 1 : 0;
     const p = push(state, value);
     if (!p) return overflow(state, "interrupt", op);
@@ -174,7 +174,7 @@ export function executeExt(
         { type: "transfer", from: "PC", to: "MAR", value: state.pc },
       ]);
     case "operand-fetch-read": {
-      const value = state.memory[state.mar] ?? 0;
+      const value = state.memory[state.mar] as number;
       const next = (state.pc + 1) % MEMORY_SIZE;
       return done(
         { mdr: value, pc: next },
@@ -192,7 +192,7 @@ export function executeExt(
         { type: "transfer", from: "MDR", to: "MAR", value: ext.operand },
       ]);
     case "indirect-read": {
-      const value = state.memory[state.mar] ?? 0;
+      const value = state.memory[state.mar] as number;
       return done({ mdr: value }, [
         { type: "memory-read", address: state.mar, value },
         { type: "transfer", from: "MEMORY", to: "MDR", value },
@@ -231,7 +231,7 @@ export function executeExt(
       ]);
     }
     case "operand-read": {
-      const value = state.memory[state.mar] ?? 0;
+      const value = state.memory[state.mar] as number;
       return done({ mdr: value }, [
         { type: "memory-read", address: state.mar, value },
         { type: "transfer", from: "MEMORY", to: "MDR", value },
@@ -269,7 +269,7 @@ export function executeExt(
       ]);
     }
     case "store-write": {
-      const previous = state.memory[state.mar] ?? 0;
+      const previous = state.memory[state.mar] as number;
       const memory = state.memory.slice();
       memory[state.mar] = state.mdr;
       return done({ memory }, [
@@ -325,7 +325,7 @@ export function executeExt(
     }
     case "stack-pop": {
       if (ext.sp >= MEMORY_SIZE) return underflow(state, op);
-      const value = state.memory[ext.sp] ?? 0;
+      const value = state.memory[ext.sp] as number;
       const sp = ext.sp + 1;
       const events: EngineEvent[] = [
         { type: "transfer", from: "SP", to: "MAR", value: ext.sp },
@@ -348,7 +348,7 @@ export function executeExt(
         );
       }
       // RTI takes back the flag, then ACC, then PC: the reverse of interrupt entry.
-      const restores = (["flag", "ACC", "PC"] as const)[index] ?? "PC";
+      const restores = (["flag", "ACC", "PC"] as const)[index] as "flag" | "ACC" | "PC";
       const popped: EngineEvent = {
         type: "stack-pop",
         address: ext.sp,
