@@ -46,6 +46,8 @@ export interface TraceRow {
   readonly interrupt?: "timer" | "keyboard";
   /** 2 for an instruction whose address or port is in the next mailbox. */
   readonly words?: 2;
+  /** Indirect or indexed addressing (extended machine). */
+  readonly mode?: "indirect" | "indexed";
 }
 
 export interface TraceOptions {
@@ -154,6 +156,7 @@ export class Trace {
       address: complete.address,
       instruction: complete.instruction,
       mnemonic: complete.mnemonic,
+      ...(complete.mode ? { mode: complete.mode } : {}),
       acc: after.acc,
       negative: after.negative,
       pc: after.pc,
