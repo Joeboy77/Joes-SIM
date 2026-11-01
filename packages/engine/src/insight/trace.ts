@@ -7,7 +7,7 @@
  * the same answer after stepping, an instant run (which produces no events) or a timeline jump.
  * Every 1,000 rows it keeps a keyframe, so going back never replays more than 1,000 instructions.
  */
-import type { Mnemonic } from "../dialects/types";
+import type { AnyMnemonic } from "../dialects/types";
 import type { EngineEvent } from "../core/events";
 import { step } from "../core/step";
 import { MEMORY_SIZE, type MachineState, type OutputItem } from "../core/types";
@@ -17,7 +17,7 @@ export interface TraceRow {
   readonly step: number;
   readonly address: number;
   readonly instruction: number;
-  readonly mnemonic: Mnemonic;
+  readonly mnemonic: AnyMnemonic;
   /** Machine values after the instruction. */
   readonly acc: number;
   readonly negative: boolean;

@@ -8,6 +8,27 @@ export type DialectId = "classic" | "higginson" | "ocr";
 export type Mnemonic =
   "ADD" | "SUB" | "STA" | "LDA" | "BRA" | "BRZ" | "BRP" | "INP" | "OUT" | "OTC" | "HLT";
 
+/** Instructions of the extended machine (docs/specs/extended.md). */
+export type ExtMnemonic =
+  | "PUSH"
+  | "POP"
+  | "CALL"
+  | "RET"
+  | "LDX"
+  | "STX"
+  | "INX"
+  | "DEX"
+  | "EI"
+  | "DI"
+  | "RTI"
+  | "VEC"
+  | "WAIT"
+  | "GET"
+  | "PUT";
+
+/** Any instruction either machine can run. INT names an interrupt entry in traces. */
+export type AnyMnemonic = Mnemonic | ExtMnemonic | "INT";
+
 /**
  * How the accumulator handles results outside its range.
  *

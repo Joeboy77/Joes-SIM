@@ -1,5 +1,7 @@
 import { DEFAULT_DIALECT, getDialect } from "../dialects/dialects";
 import type { DialectId } from "../dialects/types";
+import { createExtended } from "../machines/extended/devices";
+import type { KeyPress } from "../machines/extended/types";
 import { inRange } from "./semantics";
 import { MEMORY_SIZE, type MachineState } from "./types";
 
@@ -8,6 +10,18 @@ export interface CreateStateOptions {
   readonly memory?: readonly number[];
   readonly inputs?: readonly number[];
   readonly dialect?: DialectId;
+  /** "extended" adds the stack, interrupts and devices (docs/specs/extended.md). */
+  readonly machine?: MachineId;
+  /** Extended machine: the first mailbox after the program. Defaults to the last non-zero one. */
+  readonly stackFloor?: number;
+  /** Extended machine: key presses, each arriving once `cycle` instructions have completed. */
+  readonly keys?: readonly KeyPress[];
+}
+
+export type MachineId = "classic" | "extended";
+
+export function machineOf(state: MachineState): MachineId {
+  return state.ext ? "extended" : "classic";
 }
 
 /** A fresh machine with the program loaded and the program counter at 00. */
@@ -47,6 +61,14 @@ export function createState(options: CreateStateOptions = {}): MachineState {
     currentAddress: 0,
     cycles: 0,
     microSteps: 0,
+    ...(options.machine === "extended"
+      ? {
+          ext: createExtended(memory, {
+            ...(options.stackFloor === undefined ? {} : { stackFloor: options.stackFloor }),
+            ...(options.keys ? { keys: options.keys } : {}),
+          }),
+        }
+      : {}),
   };
 }
 
@@ -74,6 +96,8 @@ export function provideInput(state: MachineState, value: number): MachineState {
 }
 
 /** True when stepping can make progress. */
+export { pressKey } from "../machines/extended/micro";
+
 export function canStep(state: MachineState): boolean {
   return state.status === "ready";
 }

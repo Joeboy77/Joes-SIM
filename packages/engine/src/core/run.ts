@@ -1,10 +1,18 @@
 import { FastCore } from "../machines/classic/fast";
 import { stepMicro } from "../machines/classic/micro";
 import { conditionMet, type RunCondition } from "./conditions";
+import type { ExtendedState } from "../machines/extended/types";
 import type { MachineState } from "./types";
 
 export type StopReason =
-  "halted" | "error" | "waiting-input" | "breakpoint" | "budget" | "infinite-loop" | "condition";
+  | "halted"
+  | "error"
+  | "waiting-input"
+  | "waiting-interrupt"
+  | "breakpoint"
+  | "budget"
+  | "infinite-loop"
+  | "condition";
 
 export interface InfiniteLoop {
   /** The instruction count (cycle) at which the repeating part begins. */
@@ -74,6 +82,9 @@ export function run(initial: MachineState, options: RunOptions = {}): RunResult 
     if (outcome === "halted") return { state: core.toState(), reason: "halted" };
     if (outcome === "error") return { state: core.toState(), reason: "error" };
     if (outcome === "waiting-input") return { state: core.toState(), reason: "waiting-input" };
+    if (outcome === "waiting-interrupt") {
+      return { state: core.toState(), reason: "waiting-interrupt" };
+    }
     if (conditions.length > 0) {
       const met = metCondition(core);
       if (met >= 0) return { state: core.toState(), reason: "condition", condition: met };
@@ -87,6 +98,7 @@ function stopReason(state: MachineState): StopReason | null {
   if (state.status === "halted") return "halted";
   if (state.status === "error") return "error";
   if (state.status === "waiting-input") return "waiting-input";
+  if (state.status === "waiting-interrupt") return "waiting-interrupt";
   return null;
 }
 
@@ -97,6 +109,7 @@ interface Snapshot {
   memory: number[];
   version: number;
   cycles: number;
+  ext: ExtendedState | undefined;
 }
 
 /**
@@ -110,6 +123,8 @@ class LoopDetector {
   private power = 1;
   private lambda = 0;
   private inputIndex = -1;
+  private keyboardReads = -1;
+  private keyIndex = -1;
 
   constructor(private readonly core: FastCore) {
     this.reset();
@@ -117,7 +132,11 @@ class LoopDetector {
 
   observe(): InfiniteLoop | null {
     const core = this.core;
-    if (core.inputIndex !== this.inputIndex) {
+    if (
+      core.inputIndex !== this.inputIndex ||
+      core.keyboardReads !== this.keyboardReads ||
+      (core.ext?.keyIndex ?? 0) !== this.keyIndex
+    ) {
       this.reset();
       return null;
     }
@@ -134,6 +153,8 @@ class LoopDetector {
 
   private reset(): void {
     this.inputIndex = this.core.inputIndex;
+    this.keyboardReads = this.core.keyboardReads;
+    this.keyIndex = this.core.ext?.keyIndex ?? 0;
     this.segmentStart = this.snapshot();
     this.tortoise = this.segmentStart;
     this.power = 1;
@@ -149,6 +170,7 @@ class LoopDetector {
       memory: c.snapshotMemory(),
       version: c.memoryVersion,
       cycles: c.cycles,
+      ext: c.ext,
     };
   }
 
@@ -156,6 +178,7 @@ class LoopDetector {
     const c = this.core;
     const t = this.tortoise;
     if (c.pc !== t.pc || c.acc !== t.acc || c.negative !== t.negative) return false;
+    if (!sameExt(c.ext, t.ext)) return false;
     if (c.memoryVersion === t.version) return true;
     return sameMemory(c.memory, t.memory);
   }
@@ -174,6 +197,7 @@ class LoopDetector {
         cycles: start.cycles,
         status: "ready",
         stage: 0,
+        ...(start.ext ? { ext: start.ext } : {}),
       });
     const a = fromStart();
     const b = fromStart();
@@ -183,6 +207,7 @@ class LoopDetector {
       a.pc === b.pc &&
       a.acc === b.acc &&
       a.negative === b.negative &&
+      sameExt(a.ext, b.ext) &&
       sameMemory(a.memory, b.memory)
     )) {
       a.exec();
@@ -197,4 +222,37 @@ function sameMemory(a: readonly number[], b: readonly number[]): boolean {
   if (a === b) return true;
   for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
   return true;
+}
+
+/** Whether two extended states are the same, ignoring the key schedule (no keys arrive in a loop). */
+function sameExt(a: ExtendedState | undefined, b: ExtendedState | undefined): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  if (
+    a.sp !== b.sp ||
+    a.x !== b.x ||
+    a.ie !== b.ie ||
+    a.iv !== b.iv ||
+    a.timerPending !== b.timerPending ||
+    a.keyboardPending !== b.keyboardPending ||
+    a.cause !== b.cause ||
+    a.operand !== b.operand
+  ) {
+    return false;
+  }
+  const d = a.devices;
+  const e = b.devices;
+  return (
+    d.console === e.console &&
+    d.pixel === e.pixel &&
+    d.timerPeriod === e.timerPeriod &&
+    d.timerLeft === e.timerLeft &&
+    d.minus === e.minus &&
+    d.note === e.note &&
+    d.noteLength === e.noteLength &&
+    sameMemory(d.keyboard, e.keyboard) &&
+    d.keyboard.length === e.keyboard.length &&
+    sameMemory(d.segments, e.segments) &&
+    sameMemory(d.pixels, e.pixels)
+  );
 }

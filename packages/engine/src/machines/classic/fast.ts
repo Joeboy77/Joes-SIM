@@ -14,9 +14,11 @@ import {
   executeLength,
 } from "../../core/semantics";
 import { MEMORY_SIZE, type MachineState, type OutputItem } from "../../core/types";
-import { invalidMessage, toChar } from "./micro";
+import { completeExt, interruptPending } from "../extended/micro";
+import type { ExtendedState } from "../extended/types";
+import { invalidMessage, stepMicro, toChar } from "./micro";
 
-export type ExecOutcome = "ok" | "halted" | "error" | "waiting-input";
+export type ExecOutcome = "ok" | "halted" | "error" | "waiting-input" | "waiting-interrupt";
 
 export class FastCore {
   readonly dialect: Dialect;
@@ -34,6 +36,10 @@ export class FastCore {
   currentAddress: number;
   /** Increases on every memory write, so equal versions mean identical memory. */
   memoryVersion = 0;
+  /** The extended machine's registers and devices; undefined on the classic machine. */
+  ext: ExtendedState | undefined;
+  /** GETs from the keyboard so far: like INP, they read input, so a loop with them can end. */
+  keyboardReads = 0;
   private memoryChanged = false;
   private outputsChanged = false;
   private status: MachineState["status"];
@@ -57,12 +63,16 @@ export class FastCore {
     this.status = base.status;
     this.stage = base.stage;
     this.error = base.error;
+    this.ext = base.ext;
   }
 
   /** Runs one whole instruction from an instruction boundary. */
   exec(): ExecOutcome {
     const p = this.pc;
     const word = this.memory[p] as number;
+    if (this.ext && (interruptPending(this.ext) || Math.floor(word / 100) === 4)) {
+      return this.execMicro();
+    }
     this.currentAddress = p;
     this.mar = p;
     this.mdr = word;
@@ -149,7 +159,47 @@ export class FastCore {
     }
     this.microSteps += EXECUTE_START + executeLength(d.mnemonic);
     this.cycles++;
+    if (this.ext) this.ext = completeExt(this.ext, this.cycles, false).ext;
     return outcome;
+  }
+
+  /**
+   * Extended instructions and interrupt entry run through the micro-step machine, so the two
+   * can never disagree about them. They are a small part of most runs.
+   */
+  private execMicro(): ExecOutcome {
+    let state = this.toState();
+    do {
+      const r = stepMicro(state);
+      for (const e of r.step?.events ?? []) {
+        if (e.type === "device-read" && e.device === "keyboard") this.keyboardReads++;
+      }
+      if (r.state === state) break;
+      state = r.state;
+    } while (state.stage !== 0 && state.status === "ready");
+
+    if (state.memory !== this.memory) {
+      // A fresh copy made by the micro-step machine, so this core now owns it.
+      this.memory = state.memory as number[];
+      this.memoryChanged = true;
+      this.memoryVersion++;
+    }
+    this.pc = state.pc;
+    this.mar = state.mar;
+    this.mdr = state.mdr;
+    this.ir = state.ir;
+    this.acc = state.acc;
+    this.negative = state.negative;
+    this.cycles = state.cycles;
+    this.microSteps = state.microSteps;
+    this.currentAddress = state.currentAddress;
+    this.status = state.status;
+    this.stage = state.stage;
+    this.error = state.error;
+    this.ext = state.ext;
+    if (state.status === "error") return "error";
+    if (state.status === "waiting-interrupt") return "waiting-interrupt";
+    return "ok";
   }
 
   /** Copies memory so later writes cannot affect a snapshot taken from this core. */
@@ -176,6 +226,7 @@ export class FastCore {
       currentAddress: this.currentAddress,
       cycles: this.cycles,
       microSteps: this.microSteps,
+      ...(this.ext ? { ext: this.ext } : {}),
     };
   }
 }

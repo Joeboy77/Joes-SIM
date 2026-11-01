@@ -22,6 +22,7 @@ const SCALARS = [
   "currentAddress",
   "cycles",
   "microSteps",
+  "ext",
 ] as const;
 type ScalarKey = (typeof SCALARS)[number];
 

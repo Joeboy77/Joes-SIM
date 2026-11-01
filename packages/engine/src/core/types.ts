@@ -1,4 +1,5 @@
 import type { DialectId } from "../dialects/types";
+import type { ExtendedState } from "../machines/extended/types";
 
 export const MEMORY_SIZE = 100;
 
@@ -6,9 +7,16 @@ export type OutputItem =
   | { readonly kind: "number"; readonly value: number }
   | { readonly kind: "char"; readonly value: number; readonly char: string };
 
-export type MachineStatus = "ready" | "waiting-input" | "halted" | "error";
+export type MachineStatus = "ready" | "waiting-input" | "waiting-interrupt" | "halted" | "error";
 
-export type MachineErrorCode = "invalid-instruction";
+export type MachineErrorCode =
+  | "invalid-instruction"
+  // The extended machine only (docs/specs/extended.md).
+  | "address-out-of-range"
+  | "stack-overflow"
+  | "stack-underflow"
+  | "device-error"
+  | "wait-forever";
 
 export interface MachineError {
   readonly code: MachineErrorCode;
@@ -52,4 +60,10 @@ export interface MachineState {
   readonly cycles: number;
   /** Micro-steps completed. */
   readonly microSteps: number;
+
+  /**
+   * The extended machine's registers and devices. Absent on the classic machine, which then
+   * behaves exactly as before.
+   */
+  readonly ext?: ExtendedState;
 }

@@ -16,23 +16,45 @@ import {
   type Decoded,
 } from "../../core/semantics";
 import { MEMORY_SIZE, type MachineState, type OutputItem } from "../../core/types";
+import type { AnyMnemonic } from "../../dialects/types";
+import { completeExt, executeExt, interruptPending, interruptStep } from "../extended/micro";
+import {
+  INTERRUPT_STAGE,
+  decodeExt,
+  type AddressMode,
+  type ExtDecoded,
+} from "../extended/semantics";
 
 export interface MicroResult {
   readonly state: MachineState;
   readonly step: MicroStep | null;
 }
 
-type Changes = { -readonly [K in keyof MachineState]?: MachineState[K] };
+export type Changes = { -readonly [K in keyof MachineState]?: MachineState[K] };
 
 export function stepMicro(state: MachineState): MicroResult {
   if (state.status !== "ready") {
     if (state.status === "waiting-input" && state.stage >= EXECUTE_START) {
       return { state, step: { phase: "execute", op: "input", events: [{ type: "input-needed" }] } };
     }
+    if (state.status === "waiting-interrupt") {
+      return {
+        state,
+        step: { phase: "execute", op: "wait", events: [{ type: "wait", idle: true }] },
+      };
+    }
     return { state, step: null };
   }
   const dialect = getDialect(state.dialect);
   const { stage } = state;
+
+  // The extended machine takes a pending interrupt between instructions.
+  if (state.ext) {
+    if (stage >= INTERRUPT_STAGE) return interruptStep(state);
+    if (stage === 0 && interruptPending(state.ext)) {
+      return interruptStep({ ...state, stage: INTERRUPT_STAGE });
+    }
+  }
 
   if (stage === 0) {
     return micro(state, "fetch", "fetch-address", { mar: state.pc, currentAddress: state.pc }, [
@@ -58,7 +80,8 @@ export function stepMicro(state: MachineState): MicroResult {
     ]);
   }
 
-  const decoded = decode(state.ir, dialect);
+  const extDecoded = state.ext && Math.floor(state.ir / 100) === 4 ? decodeExt(state.ir) : null;
+  const decoded = extDecoded ?? decode(state.ir, dialect);
   if (stage === DECODE_STAGE) {
     if (!decoded) {
       const error = {
@@ -79,12 +102,22 @@ export function stepMicro(state: MachineState): MicroResult {
       };
     }
     return micro(state, "decode", "decode", {}, [
-      { type: "decode", instruction: state.ir, ...decoded },
+      extDecoded
+        ? {
+            type: "decode",
+            instruction: state.ir,
+            opcode: 4,
+            address: state.ir % 100,
+            mnemonic: extDecoded.mnemonic,
+            ...(extDecoded.mode ? { mode: extDecoded.mode } : {}),
+          }
+        : { type: "decode", instruction: state.ir, ...(decoded as Decoded) },
       { type: "transfer", from: "IR", to: "CONTROL", value: state.ir },
     ]);
   }
 
   // Execute stages. `decoded` is non-null: decode would have stopped the machine otherwise.
+  if (extDecoded) return executeExt(state, extDecoded, stage - EXECUTE_START, dialect);
   return execute(state, decoded as Decoded, stage - EXECUTE_START, dialect);
 }
 
@@ -201,20 +234,21 @@ function operandAddress(
   ]);
 }
 
-function flagEvent(previous: boolean, value: boolean): EngineEvent[] {
+export function flagEvent(previous: boolean, value: boolean): EngineEvent[] {
   return previous === value ? [] : [{ type: "flag-change", flag: "negative", value }];
 }
 
 /** Applies one micro-step. When `completes` is given, the instruction finishes with it. */
-function micro(
+export function micro(
   state: MachineState,
   phase: Phase,
   op: MicroOp,
   changes: Changes,
   events: EngineEvent[],
-  completes?: Decoded,
+  completes?:
+    Decoded | ExtDecoded | { readonly mnemonic: AnyMnemonic; readonly mode?: AddressMode },
 ): MicroResult {
-  const next: MachineState = {
+  let next: MachineState = {
     ...state,
     ...changes,
     stage: completes ? 0 : state.stage + 1,
@@ -222,12 +256,20 @@ function micro(
     microSteps: state.microSteps + 1,
   };
   if (completes) {
+    const mode = "mode" in completes ? completes.mode : undefined;
     events.push({
       type: "instruction-complete",
       address: state.currentAddress,
       instruction: state.ir,
       mnemonic: completes.mnemonic,
+      ...(mode ? { mode } : {}),
     });
+    // On the extended machine the timer counts the instruction and due keys arrive.
+    if (next.ext) {
+      const c = completeExt(next.ext, next.cycles, completes.mnemonic === "INT");
+      next = { ...next, ext: c.ext };
+      events.push(...c.events);
+    }
   }
   return { state: next, step: { phase, op, events } };
 }
