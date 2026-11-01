@@ -136,7 +136,7 @@ export function RunBar() {
         <span aria-hidden="true">⚙</span> <span className="sr-only">{t("run.settings")}</span>
       </button>
 
-      <div className="order-last flex w-full min-w-40 items-center gap-2 lg:order-none lg:w-auto lg:flex-1">
+      <div className="order-last flex w-full min-w-48 items-center gap-2 lg:order-none lg:w-auto lg:flex-1">
         <label htmlFor={timelineId} className="text-sm text-muted">
           {t("run.timeline")}
         </label>
@@ -149,9 +149,9 @@ export function RunBar() {
           disabled={!state || maxCycle === 0 || playing}
           onChange={(e) => a.jumpToCycle(Number(e.target.value))}
           aria-valuetext={`Instruction ${state?.cycles ?? 0} of ${maxCycle}`}
-          className="flex-1 accent-[var(--sim-color-accent)]"
+          className="w-full min-w-0 flex-1 accent-[var(--sim-color-accent)]"
         />
-        <span className="font-mono text-sm tabular-nums" aria-hidden="true">
+        <span className="shrink-0 font-mono text-sm tabular-nums" aria-hidden="true">
           {state?.cycles ?? 0}/{maxCycle}
         </span>
       </div>

@@ -240,6 +240,16 @@ describe("interrupts", () => {
     expect(replay).toEqual(live);
   });
 
+  it("the keyboard interrupt stays pending until every waiting key is read", () => {
+    // VEC 06; EI; WAIT; BRA 03 ... 06 GET 02; OUT; RTI. Each interrupt reads one key.
+    const m = [443, 6, 440, 444, 603, 0, 450, 2, 902, 442];
+    const r = run(ext(m, { keys: [3, 3, 3].map((cycle, i) => ({ cycle, key: 65 + i })) }), {
+      maxSteps: 200,
+    });
+    expect(r.state.outputs.map((o) => o.value)).toEqual([65, 66, 67]);
+    expect(r.state.ext?.keyboardPending).toBe(false);
+  });
+
   it("keys pressed mid-instruction arrive at its end", () => {
     const m = [443, 6, 440, 600, 0, 0, 450, 2, 902, 0];
     let s = ext(m);

@@ -168,7 +168,14 @@ export function readPort(
   switch (port) {
     case 2: {
       const [key, ...rest] = d.keyboard;
-      return key === undefined ? result(0) : result(key, { ...d, keyboard: rest });
+      if (key === undefined) return result(0);
+      // The keyboard interrupt stays pending while keys are waiting.
+      return {
+        ok: true,
+        value: key,
+        device: p.device,
+        ext: { ...ext, keyboardPending: rest.length > 0, devices: { ...d, keyboard: rest } },
+      };
     }
     case 3:
       return result(d.keyboard.length);
@@ -323,7 +330,7 @@ export function deliverKeys(
     ext: {
       ...ext,
       keyIndex: i,
-      keyboardPending: ext.keyboardPending || delivered.some((d) => !d.dropped),
+      keyboardPending: keyboard.length > 0,
       devices: { ...ext.devices, keyboard },
     },
     delivered,

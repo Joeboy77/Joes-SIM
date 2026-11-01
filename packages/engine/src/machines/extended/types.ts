@@ -44,6 +44,7 @@ export interface ExtendedState {
   /** Interrupt vector: where the handler starts. */
   readonly iv: number;
   readonly timerPending: boolean;
+  /** True while keys wait in the buffer: reading the last one clears it. */
   readonly keyboardPending: boolean;
   /** What raised the last interrupt: 1 timer, 2 keyboard, 0 none yet (port 50). */
   readonly cause: number;

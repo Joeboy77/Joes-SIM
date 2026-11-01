@@ -184,6 +184,7 @@ function Console({ text }: { text: string }) {
     <Device title="Console" port="port 01">
       <pre
         tabIndex={0}
+        role="region"
         aria-label={`Console: ${text ? text : "empty"}`}
         className="min-h-24 overflow-x-auto rounded-sm bg-[#111] p-2 font-mono text-sm leading-snug whitespace-pre text-[#e6ffe6]"
       >

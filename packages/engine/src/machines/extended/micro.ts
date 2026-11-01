@@ -102,8 +102,9 @@ export function interruptStep(state: MachineState): MicroResult {
           ...ext,
           ie: false,
           cause: source === "timer" ? 1 : 2,
+          // The keyboard stays pending until its keys are read, so a handler that reads one key
+          // runs again for the next.
           timerPending: source === "timer" ? false : ext.timerPending,
-          keyboardPending: source === "keyboard" ? false : ext.keyboardPending,
         },
       },
       [
