@@ -13,7 +13,7 @@ import {
 import { DIALECTS } from "@joes-sim/engine";
 import { motion, useReducedMotion } from "motion/react";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Editor } from "@/sim/editor/Editor";
 import { Hints } from "@/sim/panels/ProblemsPanel";
 import { SimProvider, useSim, useSimState } from "@/sim/SimProvider";
@@ -28,6 +28,24 @@ import {
   type ChallengeProgress,
 } from "@/storage/progress";
 import { Difficulty } from "./ChallengeList";
+
+/** What a test expects, in words: outputs, and any mailboxes it checks. */
+function expects(t: Challenge["tests"][number]): string {
+  const boxes = Object.entries(t.mailboxes ?? {}).map(([label, v]) => `${label} = ${v}`);
+  if (boxes.length && t.outputs.length === 0) return boxes.join(", ");
+  return [show(t.outputs), ...boxes].join("; ");
+}
+
+/** A test's schedule on the multicore machine, in words. */
+function scheduleText(t: Challenge["tests"][number]): string {
+  const s = t.schedule;
+  if (!s) return "";
+  if (s.mode === "random") return ` (random order, seed ${s.seed})`;
+  if (s.mode === "round-robin") {
+    return ` (taking turns, ${s.quantum} instruction${s.quantum === 1 ? "" : "s"} each)`;
+  }
+  return "";
+}
 
 const show = (os: readonly ExpectedOutput[]) =>
   os.length ? os.map((o) => (typeof o === "string" ? `'${o}'` : o)).join(", ") : "nothing";
@@ -57,6 +75,8 @@ function Workbench({ challenge }: { challenge: Challenge }) {
   const store = useSim();
   const source = useSimState((s) => s.source);
   const cache = useSimState((s) => s.cache);
+  const [order, setOrder] = useState("");
+  const orderId = useId();
 
   // A cache challenge starts from its own cache.
   useEffect(() => {
@@ -93,7 +113,10 @@ function Workbench({ challenge }: { challenge: Challenge }) {
   }, [source, challenge.id]);
 
   const runTests = async () => {
-    const r = runChallenge(source, challenge, { cache: store.getState().cache });
+    const r = runChallenge(source, challenge, {
+      cache: store.getState().cache,
+      choices: parseOrder(order, challenge.multicore?.cores ?? 2),
+    });
     setResult(r);
     setRunId((n) => n + 1);
     const changed = source.trim() !== challenge.starter.trim();
@@ -138,6 +161,25 @@ function Workbench({ challenge }: { challenge: Challenge }) {
             <Editor />
           </div>
           {challenge.cache && <CacheSettings config={cache} />}
+          {challenge.multicore?.chooseOrder && (
+            <div className="space-y-1">
+              <label htmlFor={orderId} className="block font-bold">
+                Order of cores
+              </label>
+              <p className="text-sm text-muted" id={`${orderId}-help`}>
+                One number per step: 0 for Kofi, 1 for Kwame. For example 0 0 1 1. After the last
+                one, the cores carry on in order until they halt.
+              </p>
+              <input
+                id={orderId}
+                aria-describedby={`${orderId}-help`}
+                value={order}
+                onChange={(e) => setOrder(e.target.value)}
+                className="min-h-11 w-full rounded-sm border border-border-strong bg-surface px-2 font-mono"
+                autoComplete="off"
+              />
+            </div>
+          )}
           {(challenge.pipeline || challenge.cache) && (
             <p className="text-sm">
               <a
@@ -191,8 +233,9 @@ function Workbench({ challenge }: { challenge: Challenge }) {
               <ul className="space-y-1 text-sm">
                 {challenge.tests.map((t, i) => (
                   <li key={i} className="rounded-sm border border-border p-2">
-                    Test {i + 1}: inputs {t.inputs.length ? t.inputs.join(", ") : "none"} → expects{" "}
-                    {show(t.outputs)}
+                    Test {i + 1}
+                    {scheduleText(t)}: inputs {t.inputs.length ? t.inputs.join(", ") : "none"} →
+                    expects {expects(t)}
                   </li>
                 ))}
               </ul>
@@ -304,7 +347,9 @@ function Results({
               <span className={r.pass ? "text-success" : "text-danger"}>
                 {r.pass ? "✓ Pass" : "✗ Fail"}
               </span>
-              {": "}test {i + 1}, inputs {r.test.inputs.length ? r.test.inputs.join(", ") : "none"}
+              {": "}test {i + 1}
+              {scheduleText(r.test)}, inputs{" "}
+              {r.test.inputs.length ? r.test.inputs.join(", ") : "none"}
               {r.test.keys?.length
                 ? `, keys ${r.test.keys.map((k) => (k.key === 10 ? "Enter" : String.fromCharCode(k.key))).join(" ")}`
                 : ""}
@@ -454,4 +499,13 @@ function Scores({
       )}
     </section>
   );
+}
+
+/** "0 1 0 1" or "0,1,0,1" as core numbers; anything else is left out. */
+export function parseOrder(text: string, cores: number): number[] {
+  return text
+    .split(/[\s,]+/)
+    .filter(Boolean)
+    .map(Number)
+    .filter((n) => Number.isInteger(n) && n >= 0 && n < cores);
 }

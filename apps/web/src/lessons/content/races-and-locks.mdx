@@ -1,0 +1,92 @@
+Modern processors have several **cores**: several Little Men, each with his own counter,
+calculator and instruction board, all working on **one shared set of mailboxes**. Choose
+**Machine: Multicore** in the simulator. Each core starts at a label: `core1` for the second Little
+Man (Kwame), and 00 for the first (Kofi).
+
+The machine runs one instruction of one core at a time. The **schedule** decides whose turn it is:
+taking turns (round-robin), a random order from a seed, or you choose every step yourself.
+
+## A race
+
+Kofi and Kwame each add 1 to `total`. Adding takes three instructions: `LDA total`, `ADD one`,
+`STA total`.
+
+<LessonSim
+  title="Two cores, one total"
+  machine="multicore"
+  view="story"
+  program={`
+        LDA total
+        ADD one
+        STA total
+        HLT
+core1   LDA total
+        ADD one
+        STA total
+        HLT
+total   DAT 0
+one     DAT 1
+`}
+  memory
+/>
+
+Run it. Taking turns one instruction at a time, both Little Men load 0, both add 1, and both store
+
+1. One update is **lost**: total ends as 1, not 2. The timeline shows which core ran each step, and
+   mailbox `total` is marked ⚡ as a **race**: two cores used it, one writing, without a lock.
+
+<Predict
+  question="Kofi runs LDA total, then Kwame runs all three of his instructions, then Kofi finishes. What is total at the end?"
+  choices={["1", "2", "0"]}
+  answer="1"
+  explain="Kofi loaded 0 before Kwame stored 1. Kofi then adds 1 to his old 0 and stores 1 over Kwame's 1. Kwame's update is lost."
+/>
+
+A race is hard to find because it depends on **timing**: with turns of three instructions, the
+same program happens to give 2. Try the Random schedule with different seeds.
+
+## A lock
+
+The three instructions must run without the other core getting in between: a **critical
+section**. A **lock** is a mailbox that says whether someone is inside: 0 free, 1 taken.
+
+Checking the lock with `LDA lock` and then setting it with `STA lock` does not work: both cores can
+read 0 before either writes 1. The multicore machine has an **atomic** instruction, `TAS` (test
+and set). In one step it reads the lock into the accumulator and sets it to 1, so no other core can
+run in between.
+
+<LessonSim
+  title="Taking turns safely"
+  machine="multicore"
+  program={`
+take0   TAS lock        // 0 means the lock was free, and now it is ours
+        BRZ in0
+        BRA take0       // taken: try again
+in0     LDA total
+        ADD one
+        STA total
+        LDA zero
+        STA lock        // give the lock back
+        HLT
+core1   TAS lock
+        BRZ in1
+        BRA core1
+in1     LDA total
+        ADD one
+        STA total
+        LDA zero
+        STA lock
+        HLT
+total   DAT 0
+one     DAT 1
+zero    DAT 0
+lock    DAT 0
+`}
+  memory
+/>
+
+Now every schedule gives 2, and no race is reported. While one core holds the lock, the other
+spins round its `TAS` loop until the lock is given back.
+
+The **Find the order that loses an update** and **Fix this counter with a lock** challenges
+practise these ideas.

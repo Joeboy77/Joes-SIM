@@ -12,7 +12,8 @@ function sims(slug: string) {
   const text = readFileSync(join(dir, `${slug}.mdx`), "utf8");
   return [...text.matchAll(/<LessonSim([\s\S]*?)\/>/g)].map(([, attrs = ""]) => ({
     program: /program=\{`([\s\S]*?)`\}/.exec(attrs)?.[1]?.replace(/^\n/, "") ?? "",
-    machine: /machine="extended"/.test(attrs) ? ("extended" as const) : ("classic" as const),
+    machine: (/machine="(extended|multicore)"/.exec(attrs)?.[1] ?? "classic") as
+      "classic" | "extended" | "multicore",
   }));
 }
 
@@ -29,7 +30,7 @@ describe("lessons", () => {
       for (const s of sims(lesson.slug)) {
         const r = assemble(s.program, { dialect: lesson.dialect, machine: s.machine });
         expect(r.diagnostics.filter((d) => d.severity === "error")).toEqual([]);
-        if (lesson.machine === "extended") expect(s.machine).toBe("extended");
+        if (lesson.machine) expect(s.machine).toBe(lesson.machine);
       }
     });
   }

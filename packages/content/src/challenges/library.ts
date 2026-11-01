@@ -3,6 +3,7 @@
  * licensed under CC BY 4.0. Targets are the model solution's own scores; tests check that every
  * solution passes and meets them, and that every starter program does not already pass.
  */
+import { CONCURRENCY_CHALLENGES } from "./concurrency";
 import { EXTENDED_CHALLENGES } from "./extended";
 import { PERFORMANCE_CHALLENGES } from "./performance";
 import type { Challenge } from "./types";
@@ -1998,4 +1999,6 @@ one     DAT 1
   ...EXTENDED_CHALLENGES,
   // ---- Pipelines and caches ----
   ...PERFORMANCE_CHALLENGES,
+  // ---- Many cores: races and locks ----
+  ...CONCURRENCY_CHALLENGES,
 ];

@@ -18,7 +18,7 @@ export interface LessonSimProps {
   readonly inputs?: string;
   readonly dialect?: DialectId;
   /** "extended" for the stack, addressing modes, interrupts and devices. */
-  readonly machine?: "classic" | "extended";
+  readonly machine?: "classic" | "extended" | "multicore";
   readonly view?: ViewMode;
   /** A part to keep highlighted, to draw attention to it. */
   readonly highlight?: Component;

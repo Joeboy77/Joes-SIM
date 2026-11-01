@@ -1,4 +1,4 @@
-import type { CacheConfig, DialectId, KeyPress } from "@joes-sim/engine";
+import type { CacheConfig, DialectId, KeyPress, Schedule } from "@joes-sim/engine";
 
 /** Concept tags (brief, 7.8). Every tag is covered by at least one challenge. */
 export const CONCEPTS = [
@@ -19,6 +19,8 @@ export const CONCEPTS = [
   // Phase 7.
   "pipelining",
   "caches",
+  // Phase 8.
+  "concurrency",
 ] as const;
 export type Concept = (typeof CONCEPTS)[number];
 
@@ -38,6 +40,7 @@ export const CONCEPT_NAMES: Record<Concept, string> = {
   devices: "Devices",
   pipelining: "Pipelining",
   caches: "Caches",
+  concurrency: "Cores, races and locks",
 };
 
 /** A number is an OUT value; a one-character string is an OTC character. */
@@ -52,6 +55,10 @@ export interface ChallengeTest {
   readonly console?: string;
   /** Extended machine: the lit pixels at the end, as [pixel, colour], in pixel order. */
   readonly pixels?: readonly (readonly [number, number])[];
+  /** Multicore machine: how the cores are scheduled for this test. */
+  readonly schedule?: Schedule;
+  /** The value each labelled mailbox must hold at the end. */
+  readonly mailboxes?: Readonly<Record<string, number>>;
 }
 
 export interface Targets {
@@ -70,8 +77,16 @@ export interface Challenge {
   readonly difficulty: 1 | 2 | 3 | 4 | 5;
   readonly concepts: readonly Concept[];
   readonly dialect: DialectId;
-  /** Present for challenges on the extended machine (docs/specs/extended.md). */
-  readonly machine?: "extended";
+  /** Present for challenges on the extended or multicore machine. */
+  readonly machine?: "extended" | "multicore";
+  /**
+   * Multicore challenges: how many cores. With `chooseOrder`, the program is fixed and the learner
+   * types the order in which the cores run (a manual schedule).
+   */
+  readonly multicore?: {
+    readonly cores: number;
+    readonly chooseOrder?: { readonly solution: readonly number[] };
+  };
   /** "build" starts from almost nothing; "bug-hunt" gives a broken program to fix. */
   readonly kind: "build" | "bug-hunt";
   readonly description: string;

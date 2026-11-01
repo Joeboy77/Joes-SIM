@@ -12,8 +12,8 @@ export interface LessonInfo {
   readonly concepts: readonly string[];
   readonly prerequisites: readonly string[];
   readonly dialect: DialectId;
-  /** Present for lessons on the extended machine. */
-  readonly machine?: "extended";
+  /** Present for lessons on the extended or multicore machine. */
+  readonly machine?: "extended" | "multicore";
 }
 
 export const LESSONS: readonly LessonInfo[] = [
@@ -156,6 +156,16 @@ export const LESSONS: readonly LessonInfo[] = [
     prerequisites: ["pipelining"],
     dialect: "classic",
     machine: "extended",
+  },
+  {
+    slug: "races-and-locks",
+    title: "Many cores: races and locks",
+    summary: "Two Little Men share the mailboxes. Watch them collide, then make them take turns.",
+    minutes: 15,
+    concepts: ["parallelism", "race conditions", "locks"],
+    prerequisites: ["loops"],
+    dialect: "classic",
+    machine: "multicore",
   },
 ];
 

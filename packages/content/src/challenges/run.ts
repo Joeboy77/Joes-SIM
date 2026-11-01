@@ -15,6 +15,7 @@ import {
   measure,
   run,
   type Diagnostic,
+  type Program,
   type OutputItem,
   type StopReason,
 } from "@joes-sim/engine";
@@ -50,6 +51,7 @@ export interface ChallengeResult {
 
 export const TEST_STEP_LIMIT = 100_000;
 
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 const asExpected = (o: OutputItem): ExpectedOutput => (o.kind === "char" ? o.char : o.value);
 const show = (o: ExpectedOutput) => (typeof o === "string" ? `'${o}'` : String(o));
 const list = (os: readonly ExpectedOutput[]) => (os.length ? os.map(show).join(", ") : "nothing");
@@ -85,6 +87,8 @@ function explain(
 export interface RunChallengeOptions {
   /** The cache the learner chose, for cache challenges. */
   readonly cache?: CacheConfig;
+  /** The order of cores the learner chose, for multicore challenges that ask for one. */
+  readonly choices?: readonly number[];
 }
 
 export function runChallenge(
@@ -104,14 +108,7 @@ export function runChallenge(
     };
   }
   const results = challenge.tests.map((test, index): TestResult => {
-    const initial = createState({
-      memory: program.memory,
-      inputs: [...test.inputs],
-      dialect: challenge.dialect,
-      machine,
-      stackFloor: program.size,
-      keys: test.keys ?? [],
-    });
+    const initial = startState(challenge, program, test, options);
     const r = run(initial, { maxSteps: TEST_STEP_LIMIT });
     const outputs = r.state.outputs.map(asExpected);
     const devices = r.state.ext?.devices;
@@ -119,10 +116,18 @@ export function runChallenge(
     const consoleOk = test.console === undefined || devices?.console === test.console;
     const pixelsOk =
       test.pixels === undefined || JSON.stringify(lit) === JSON.stringify(test.pixels);
+    const valueOf = (label: string) => {
+      const at = program.labels[label]?.address;
+      return at === undefined ? undefined : r.state.memory[at];
+    };
+    const wrongMailbox = Object.entries(test.mailboxes ?? {}).find(
+      ([label, value]) => valueOf(label) !== value,
+    );
     const pass =
       r.reason === "halted" &&
       consoleOk &&
       pixelsOk &&
+      !wrongMailbox &&
       outputs.length === test.outputs.length &&
       outputs.every((o, i) => o === test.outputs[i]);
     let difference: TestResult["difference"] = null;
@@ -139,17 +144,21 @@ export function runChallenge(
       reason: r.reason,
       cycles: r.state.cycles,
       difference,
-      explanation: !consoleOk
-        ? `The console shows ${JSON.stringify(devices?.console ?? "")}; the test expects ${JSON.stringify(test.console)}.`
-        : !pixelsOk
-          ? `The display has ${lit.length} pixel${lit.length === 1 ? "" : "s"} lit, not the ${test.pixels?.length ?? 0} the test expects in the right places and colours.`
-          : explain(
-              r.reason,
-              outputs,
-              test.outputs,
-              pass,
-              r.state.error?.code === "invalid-instruction" ? undefined : r.state.error?.message,
-            ),
+      explanation: wrongMailbox
+        ? valueOf(wrongMailbox[0]) === undefined
+          ? `The program has no mailbox labelled ${wrongMailbox[0]}.`
+          : `${wrongMailbox[0]} ended as ${valueOf(wrongMailbox[0])}; the test expects ${wrongMailbox[1]}.`
+        : !consoleOk
+          ? `The console shows ${JSON.stringify(devices?.console ?? "")}; the test expects ${JSON.stringify(test.console)}.`
+          : !pixelsOk
+            ? `The display has ${plural(lit.length, "pixel")} lit, not the ${test.pixels?.length ?? 0} the test expects in the right places and colours.`
+            : explain(
+                r.reason,
+                outputs,
+                test.outputs,
+                pass,
+                r.state.error?.code === "invalid-instruction" ? undefined : r.state.error?.message,
+              ),
     };
   });
   const goal = results.every((r) => r.pass) ? checkGoal(challenge, program, options) : undefined;
@@ -196,18 +205,11 @@ export function meetsTargets(scores: Targets, targets: Targets): Record<keyof Ta
 /** The pipeline or cache goal, checked on every test once all of them pass. */
 function checkGoal(
   challenge: Challenge,
-  program: { memory: readonly number[]; size: number },
+  program: Program,
   options: RunChallengeOptions,
 ): ChallengeResult["goal"] {
   const states = challenge.tests.map((test) => {
-    const initial = createState({
-      memory: program.memory,
-      inputs: [...test.inputs],
-      dialect: challenge.dialect,
-      machine: challenge.machine ?? "classic",
-      stackFloor: program.size,
-      keys: test.keys ?? [],
-    });
+    const initial = startState(challenge, program, test, options);
     return { initial, final: run(initial, { maxSteps: TEST_STEP_LIMIT }).state };
   });
   if (challenge.pipeline) {
@@ -222,8 +224,8 @@ function checkGoal(
       met: worst <= maxStalls,
       explanation:
         worst <= maxStalls
-          ? `The pipeline stalls for ${worst} cycle${worst === 1 ? "" : "s"} at most: the goal is ${maxStalls} or fewer.`
-          : `The pipeline stalls for ${worst} cycle${worst === 1 ? "" : "s"} on one test; the goal is ${maxStalls} or fewer. Look at the pipeline view to see where.`,
+          ? `The pipeline stalls for ${plural(worst, "cycle")} at most: the goal is ${maxStalls} or fewer.`
+          : `The pipeline stalls for ${plural(worst, "cycle")} on one test; the goal is ${maxStalls} or fewer. Look at the pipeline view to see where.`,
     };
   }
   if (challenge.cache) {
@@ -250,4 +252,37 @@ function checkGoal(
     };
   }
   return undefined;
+}
+
+/** The machine at the start of a test: inputs, key presses and, on many cores, the schedule. */
+function startState(
+  challenge: Challenge,
+  program: Program,
+  test: ChallengeTest,
+  options: RunChallengeOptions,
+) {
+  const machine = challenge.machine ?? "classic";
+  const multi = challenge.multicore;
+  return createState({
+    memory: program.memory,
+    inputs: [...test.inputs],
+    dialect: challenge.dialect,
+    machine,
+    stackFloor: program.size,
+    keys: test.keys ?? [],
+    ...(machine === "multicore"
+      ? {
+          cores: multi?.cores ?? 2,
+          starts: [0, 1, 2, 3].map((i) => program.labels[`core${i}`]?.address ?? 0),
+          ...(multi?.chooseOrder
+            ? {
+                schedule: { mode: "manual" as const, quantum: 1, seed: 1 },
+                choices: options.choices ?? [],
+              }
+            : test.schedule
+              ? { schedule: test.schedule }
+              : {}),
+        }
+      : {}),
+  });
 }

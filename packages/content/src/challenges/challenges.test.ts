@@ -22,7 +22,10 @@ describe("the challenge library", () => {
   for (const c of CHALLENGES) {
     describe(c.id, () => {
       it("has a model solution that passes every test and meets the targets exactly", () => {
-        const r = runChallenge(c.solution, c, c.cache ? { cache: c.cache.solution } : {});
+        const r = runChallenge(c.solution, c, {
+          ...(c.cache ? { cache: c.cache.solution } : {}),
+          ...(c.multicore?.chooseOrder ? { choices: c.multicore.chooseOrder.solution } : {}),
+        });
         expect(r.results.filter((t) => !t.pass).map((t) => t.explanation)).toEqual([]);
         expect(r.scores).toEqual(c.targets);
       });
@@ -169,5 +172,74 @@ describe("pipeline and cache goals", () => {
       cache: { blockSize: 3, sets: 1, ways: 1, replacement: "lru", write: "write-back" },
     });
     expect(bad.goal?.met).toBe(false);
+  });
+});
+
+describe("multicore challenges", () => {
+  const byId = (id: string) => CHALLENGES.find((c) => c.id === id) as Challenge;
+
+  it("the unlocked counter gives the wrong total under some schedules", () => {
+    const c = byId("lock-the-counter");
+    const r = runChallenge(c.starter, c);
+    expect(r.results.some((t) => t.pass)).toBe(true);
+    const failed = r.results.filter((t) => !t.pass);
+    expect(failed.length).toBeGreaterThan(0);
+    expect(failed[0]?.explanation).toMatch(/^total ended as [0-5]; the test expects 6\.$/);
+  });
+
+  it("the order of cores decides the lost update", () => {
+    const c = byId("lost-update");
+    expect(runChallenge(c.solution, c).passed).toBe(false);
+    expect(runChallenge(c.solution, c, { choices: [0, 0, 0, 1, 1, 1] }).passed).toBe(false);
+    expect(runChallenge(c.solution, c, { choices: [1, 0, 1, 0, 1, 0] }).passed).toBe(true);
+  });
+});
+
+describe("edge cases of the runner", () => {
+  const byId = (id: string) => CHALLENGES.find((c) => c.id === id) as Challenge;
+  const ONE =
+    "        LDA one\n        STA total\n        HLT\ncore1   HLT\ntotal   DAT 0\none     DAT 1";
+
+  it("reports a mailbox the program has no label for, and runs without a multicore setting", () => {
+    const base = byId("lost-update");
+    const { multicore: _m, ...noCores } = base;
+    void _m;
+    const c: Challenge = {
+      ...noCores,
+      tests: [{ inputs: [], outputs: [], mailboxes: { missing: 1 } }],
+    };
+    expect(runChallenge(ONE, c).results[0]?.explanation).toBe(
+      "The program has no mailbox labelled missing.",
+    );
+    const ok: Challenge = {
+      ...noCores,
+      tests: [{ inputs: [], outputs: [], mailboxes: { total: 1 } }],
+    };
+    expect(runChallenge(ONE, ok).passed).toBe(true);
+  });
+
+  it("explains the console on a machine with no devices, and a single lit pixel", () => {
+    const c: Challenge = {
+      ...byId("stack-reverse"),
+      tests: [{ inputs: [], outputs: [], console: "x" }],
+    };
+    expect(
+      runChallenge("        HLT", { ...c, machine: undefined } as unknown as Challenge).results[0]
+        ?.explanation,
+    ).toBe('The console shows ""; the test expects "x".');
+    const red = byId("red-line");
+    const one = runChallenge("        LDA red\n        PUT 11\n        HLT\nred     DAT 4", red);
+    expect(one.results[0]?.explanation).toMatch(/1 pixel lit/);
+  });
+
+  it("reports a pipeline goal met with stalls to spare, and several tests' hit rates", () => {
+    const c = byId("no-stalls");
+    const loose = { ...c, pipeline: { forwarding: true, prediction: false, maxStalls: 3 } };
+    expect(runChallenge(c.starter, loose).goal?.explanation).toBe(
+      "The pipeline stalls for 1 cycle at most: the goal is 3 or fewer.",
+    );
+    const cache = byId("pick-a-cache");
+    const twice = { ...cache, tests: [cache.tests[0], cache.tests[0]] as Challenge["tests"] };
+    expect(runChallenge(cache.solution, twice).goal?.explanation).toMatch(/on the hardest test/);
   });
 });

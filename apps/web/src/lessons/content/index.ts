@@ -17,4 +17,5 @@ export const LESSON_CONTENT: Record<string, () => Promise<{ default: ComponentTy
   "interrupts-and-devices": () => import("./interrupts-and-devices.mdx"),
   pipelining: () => import("./pipelining.mdx"),
   caches: () => import("./caches.mdx"),
+  "races-and-locks": () => import("./races-and-locks.mdx"),
 };
