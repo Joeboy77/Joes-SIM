@@ -42,7 +42,8 @@ export function assembleCustom(
     const cut = text.search(/\/\/|;|#/);
     const tokens = (cut >= 0 ? text.slice(0, cut) : text).split(/\s+/).filter(Boolean);
     if (!tokens.length) return;
-    let [first, ...rest] = tokens as [string, ...string[]];
+    const [head, ...rest] = tokens as [string, ...string[]];
+    let first = head;
     const isOp = (w: string) => w.toUpperCase() === "DAT" || byName.has(w.toUpperCase());
     if (!isOp(first)) {
       const next = rest[0];
