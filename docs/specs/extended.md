@@ -158,11 +158,12 @@ report the cause of an interrupt. It keeps the design to one vector.
 The machine checks **between instructions**. The check happens only when IE is on and an
 interrupt is pending. If both are pending, the timer goes first. Entry runs these micro-steps:
 
-1. `interrupt-accept`: clear the pending source, record it as the cause, and turn IE off.
-   Turning IE off means a second interrupt cannot stop the handler.
-2. `interrupt-save-pc`: push PC.
-3. `interrupt-save-acc`: push ACC.
-4. `interrupt-save-flag`: push the negative flag as 1 or 0.
+1. `interrupt-accept`: record the source as the cause, and turn IE off, so a second interrupt
+   cannot stop the handler. A timer interrupt is cleared here. A keyboard interrupt stays
+   pending while keys wait in the buffer (see Devices).
+2. `stack-push`: push PC.
+3. `stack-push`: push ACC.
+4. `stack-push`: push the negative flag as 1 or 0.
 5. `interrupt-jump`: PC = IV.
 
 RTI undoes the entry in reverse:
@@ -210,7 +211,11 @@ More detail on each device:
 - **Keyboard.**
   - A buffer of 8 key codes, plus 0 when the buffer is empty. A key pressed when the buffer is
     full is dropped, and an event says so.
-  - Adding a key raises a keyboard interrupt.
+  - The keyboard interrupt is **level-triggered**: it is pending whenever keys wait in the
+    buffer, and reading the last one clears it. A handler that reads one key with GET 2 runs
+    again for the next, so no key is missed. A handler that never reads the key runs again and
+    again, as on real hardware. (Changed during the build: the draft raised it once per key,
+    which lost keys typed quickly.)
   - Key codes are character codes: letters, digits and space. Some keys get codes of their own:
     Enter is 10, and Backspace is 8. The arrow keys are 1 to 4 (up, down, left, right).
 - **Pixel display.**
@@ -242,8 +247,9 @@ Fetch and decode are unchanged.
   The address in IR stays the family code. The operand is shown in a new **operand** field.
 
 - **Indirect** adds `indirect-address` (MAR ← operand) and `indirect-read` (MDR ← memory[MAR]).
-  After these, MDR holds the effective address.
-- **Indexed** adds `index-add`: the effective address is the operand plus X.
+  After these, MDR holds the effective address, and `operand-address` copies it to MAR.
+- **Indexed** adds `index-add`: MAR ← operand + X, in one step.
+- **LDX** ends with `load-x` (X ← MDR); **INX** and **DEX** use `index-change`.
 - **Stack instructions** use `stack-push` (SP ← SP − 1, memory[SP] ← value) and `stack-pop`
   (value ← memory[SP], SP ← SP + 1). Each one appears in the micro-step view.
 - **GET and PUT** use `device-read` and `device-write`.
@@ -251,47 +257,58 @@ Fetch and decode are unchanged.
 The table below gives each instruction's full micro-step list. Every count includes the four
 fetch steps and decode.
 
-| Instruction     | Execute micro-steps                                                                        | Total |
-| --------------- | ------------------------------------------------------------------------------------------ | ----- |
-| PUSH            | `stack-push`                                                                               | 6     |
-| POP             | `stack-pop`, `load-acc`                                                                    | 7     |
-| CALL            | operand fetch (2), `stack-push` (return address), `branch`                                 | 9     |
-| RET             | `stack-pop`, `branch`                                                                      | 7     |
-| LDX, STX        | operand fetch (2), `operand-address`, `operand-read` or `store-write`                      | 9     |
-| INX, DEX        | `alu`                                                                                      | 6     |
-| LDA/ADD/SUB @a  | operand fetch (2), indirect (2), `operand-address`, `operand-read`, `load-acc` or `alu`    | 12    |
-| STA @a          | operand fetch (2), indirect (2), `operand-address`, `store-mdr`, `store-write`             | 12    |
-| LDA/ADD/SUB a,X | operand fetch (2), `index-add`, `operand-address`, `operand-read`, `load-acc` or `alu`     | 11    |
-| STA a,X         | operand fetch (2), `index-add`, `operand-address`, `store-mdr`, `store-write`              | 11    |
-| EI, DI          | `interrupt-enable`                                                                         | 6     |
-| RTI             | `stack-pop` (3), `interrupt-enable`                                                        | 9     |
-| VEC             | operand fetch (2), `set-vector`                                                            | 8     |
-| WAIT            | `wait`. If nothing is pending, the machine waits at this step (status `waiting-interrupt`) | 6     |
-| GET, PUT        | operand fetch (2), `device-read` or `device-write`                                         | 8     |
+| Instruction     | Execute micro-steps                                                                     | Total |
+| --------------- | --------------------------------------------------------------------------------------- | ----- |
+| PUSH            | `stack-push`                                                                            | 6     |
+| POP             | `stack-pop`, `load-acc`                                                                 | 7     |
+| CALL            | operand fetch (2), `stack-push` (return address), `branch`                              | 9     |
+| RET             | `stack-pop`, `branch`                                                                   | 7     |
+| LDX             | operand fetch (2), `operand-address`, `operand-read`, `load-x`                          | 10    |
+| STX             | operand fetch (2), `operand-address`, `store-mdr`, `store-write`                        | 10    |
+| INX, DEX        | `index-change`                                                                          | 6     |
+| LDA/ADD/SUB @a  | operand fetch (2), indirect (2), `operand-address`, `operand-read`, `load-acc` or `alu` | 12    |
+| STA @a          | operand fetch (2), indirect (2), `operand-address`, `store-mdr`, `store-write`          | 12    |
+| LDA/ADD/SUB a,X | operand fetch (2), `index-add`, `operand-read`, `load-acc` or `alu`                     | 10    |
+| STA a,X         | operand fetch (2), `index-add`, `store-mdr`, `store-write`                              | 10    |
+| EI, DI          | `interrupt-enable`                                                                      | 6     |
+| RTI             | `stack-pop` (3), `interrupt-enable`                                                     | 9     |
+| VEC             | operand fetch (2), `set-vector`                                                         | 8     |
+| WAIT            | `wait` (see below)                                                                      | 6     |
+| GET, PUT        | operand fetch (2), `device-read` or `device-write`                                      | 8     |
 
 **Cycles** still count instructions completed, plus one for each interrupt entry.
 
-**The timer** counts down once per completed instruction. When it reaches 0 it raises a timer
-interrupt and reloads its period.
+**The timer** counts down once per completed instruction, starting with the instruction after
+the PUT that set it. When it reaches 0 it raises a timer interrupt and reloads its period.
+Interrupt entry does not count.
+
+**WAIT** finishes at once if an interrupt is pending. Otherwise:
+
+- with the timer running, it **idles**: it completes and runs again, so each idle WAIT counts as
+  an instruction and the timer keeps counting;
+- with key presses still scheduled, the next one arrives now (idle time is skipped);
+- with nothing that could wake it, the machine waits at this step with status
+  `waiting-interrupt` until the learner types a key.
 
 ## Events
 
 All classic events are kept. New events:
 
-| Event               | When                                                                                   |
-| ------------------- | -------------------------------------------------------------------------------------- |
-| `stack-push`        | A value goes onto the stack (address, value, new SP, and why: PUSH, CALL or interrupt) |
-| `stack-pop`         | A value comes off the stack (address, value, new SP, and why)                          |
-| `call`, `return`    | A subroutine starts or ends: caller address, target, and return address                |
-| `effective-address` | Indirect or indexed addressing works out an address (mode, steps, result)              |
-| `register-change`   | SP, X, IE or IV changes                                                                |
-| `interrupt-raised`  | A device raises an interrupt (source, cycle)                                           |
-| `interrupt-enter`   | The main program is stopped and the handler starts                                     |
-| `interrupt-return`  | RTI resumes the main program                                                           |
-| `device-read`       | GET reads a port (device, port, value)                                                 |
-| `device-write`      | PUT writes a port (device, port, value, what changed, e.g. pixels)                     |
-| `key`               | A key enters the buffer, or is dropped because it is full                              |
-| `beep`              | The beeper plays a note (note, length)                                                 |
+| Event               | When                                                                                      |
+| ------------------- | ----------------------------------------------------------------------------------------- |
+| `stack-push`        | A value goes onto the stack (address, value, new SP, and why: PUSH, CALL or interrupt)    |
+| `stack-pop`         | A value comes off the stack (address, value, new SP, and why)                             |
+| `call`, `return`    | A subroutine starts or ends: caller address, target, and return address                   |
+| `effective-address` | Indirect or indexed addressing works out an address (mode, operand, pointer or X, result) |
+| `register-change`   | X, IE or IV changes (SP changes are in `stack-push` and `stack-pop`)                      |
+| `interrupt-raised`  | A device raises an interrupt (source), at the end of an instruction                       |
+| `interrupt-enter`   | The main program is stopped and the handler starts                                        |
+| `interrupt-return`  | RTI resumes the main program                                                              |
+| `device-read`       | GET reads a port (device, port, value)                                                    |
+| `device-write`      | PUT writes a port (device, port, value, what changed, e.g. pixels)                        |
+| `key`               | A key enters the buffer, or is dropped because it is full                                 |
+| `beep`              | The beeper plays a note (note, length)                                                    |
+| `wait`              | WAIT runs: idle (nothing pending yet) or not                                              |
 
 These events drive the animations:
 
@@ -331,16 +348,24 @@ All other classic rules are unchanged:
   interrupts, the timer countdown and all device state.
   - A GET from the keyboard counts as reading input, like INP. A loop that waits for a key is
     therefore never called infinite.
-  - A loop with the timer running cannot repeat the same full state. The step budget is what
-    stops it, as on any machine with a clock.
+  - **While interrupts are on, no loop is called infinite.** A key can arrive at any moment and
+    change what happens next, so a repeating stretch proves nothing. The step budget stops such
+    a run. (Added during the build: a timer-driven program does repeat its full state exactly,
+    for example a dot that wraps round the display.)
 - **History and time travel.** Keyframes and diffs include the new registers, the stack floor
   and device state. The pixel display adds 256 values to a keyframe. That is under 1 KB, so the
   keyframe interval stays at 1,000.
 - **Trace table.** It gets SP, X and IE columns, and a column for the device each step touched.
+  Interrupt entry has its own row, shown as "interrupt (timer)" or "interrupt (keyboard)".
 - **Static analysis.**
   - The control-flow graph learns CALL and RET, and treats the vector as an entry point.
-  - New detectors flag a CALL with no RET, RET outside a subroutine, PUSH and POP that do not
-    balance on every path, and EI with no VEC.
+  - New detectors flag a CALL whose subroutine never reaches RET, RET reached from the main
+    program without a CALL, PUSH with no POP anywhere, and EI with no VEC. (Checking that PUSH
+    and POP balance on every path was dropped: it needs the stack depth along each path, and
+    reported correct recursive programs.)
+  - A program that turns interrupts on is not told it has no HLT or cannot stop.
+  - At run time, a store into the live stack (at or above SP) is reported, and each new error
+    code gets its own explanation and hints.
 
 ## Assembler
 
@@ -406,7 +431,7 @@ colour  DAT  15
 The program takes 45 mailboxes. The stack is used only by interrupt entry: three
 values, in mailboxes 97 to 99.
 
-## Acceptance tests (planned)
+## Acceptance tests
 
 - **Classic compatibility.** Every classic reference program, in every dialect, gives the same
   result and identical event streams on both machines.
