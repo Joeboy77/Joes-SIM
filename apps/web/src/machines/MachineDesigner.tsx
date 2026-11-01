@@ -16,6 +16,7 @@ import {
 } from "@joes-sim/engine";
 import { compressToEncodedURIComponent, decompressFromEncodedURIComponent } from "lz-string";
 import { useId, useMemo, useState, useSyncExternalStore } from "react";
+import { CommunityError, communityOn, shortenLink } from "@/community/client";
 import { MachineTester } from "./MachineTester";
 
 const PRESETS: readonly { readonly id: string; readonly def: MachineDefinition }[] = [
@@ -163,6 +164,28 @@ function Designer({ initial, fromLink }: { initial: MachineDefinition; fromLink:
         >
           Copy share link
         </button>
+        {communityOn && (
+          <button
+            type="button"
+            className={`${input} font-bold`}
+            disabled={problems.length > 0}
+            onClick={async () => {
+              const url = new URL(link());
+              try {
+                const { id } = await shortenLink(`${url.pathname}${url.search}`);
+                const short = `${url.origin}/s/${id}`;
+                await navigator.clipboard?.writeText(short).then(
+                  () => setMessage(`Short link copied: ${short}`),
+                  () => setMessage(`Copy this link: ${short}`),
+                );
+              } catch (e) {
+                setMessage(e instanceof CommunityError ? e.message : "No short link: try again.");
+              }
+            }}
+          >
+            Copy short link
+          </button>
+        )}
       </div>
       {message && (
         <p role="status" className="text-sm">

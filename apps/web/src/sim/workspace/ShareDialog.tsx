@@ -4,7 +4,9 @@ import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react"
 
 const noSubscribe = () => () => undefined;
 import { useSimState } from "../SimProvider";
-import { LONG_LINK, sharePath } from "./share";
+import { communityOn } from "@/community/client";
+import { PublishForm, ShortLink } from "@/community/ShareExtras";
+import { LONG_LINK, encodeShare, sharePath } from "./share";
 import { useWorkspace } from "./Workspace";
 
 /** Makes a link that opens this exact program, inputs, dialect and view. */
@@ -40,9 +42,9 @@ export function ShareButton() {
     () => "share" in navigator,
     () => false,
   );
-  const link = origin
-    ? `${origin}${sharePath({ name, source, dialect, machine, inputs, view })}`
-    : "";
+  const shared = { name, source, dialect, machine, inputs, view };
+  const path = sharePath(shared);
+  const link = origin ? `${origin}${path}` : "";
 
   return (
     <>
@@ -116,6 +118,17 @@ export function ShareButton() {
         <p role="status" className="mt-2 min-h-6 text-sm text-success">
           {copied ? "Link copied." : ""}
         </p>
+        {communityOn && open && (
+          <div className="mt-2 space-y-3 border-t border-border pt-3">
+            <ShortLink path={path} />
+            <details>
+              <summary className="min-h-11 cursor-pointer py-2 font-bold">
+                Publish to the gallery
+              </summary>
+              <PublishForm payload={encodeShare(shared)} name={name} />
+            </details>
+          </div>
+        )}
       </dialog>
     </>
   );

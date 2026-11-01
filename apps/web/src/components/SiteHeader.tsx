@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { communityOn } from "@/community/client";
 import { LanguageSwitcher, useT } from "@/i18n/useLocale";
 import { ThemeSwitcher } from "./ThemeSwitcher";
 
@@ -11,6 +12,8 @@ const LINKS = [
   ["/compiler", "nav.compiler"],
   ["/riscv", "nav.riscv"],
   ["/machines", "nav.machines"],
+  // The gallery needs the optional community service (Phase 11).
+  ...(communityOn ? ([["/gallery", "nav.gallery"]] as const) : []),
   ["/packs", "nav.packs"],
   ["/progress", "nav.progress"],
 ] as const;

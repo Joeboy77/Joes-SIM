@@ -46,6 +46,7 @@ test("every control is reachable by keyboard", async ({ page }) => {
     "Compiler",
     "RISC-V",
     "Machines",
+    "Gallery",
     "Packs",
     "Progress",
   ]) {

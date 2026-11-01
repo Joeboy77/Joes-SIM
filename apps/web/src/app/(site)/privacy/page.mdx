@@ -21,6 +21,27 @@ When you share a program, the program is inside the link itself. It is not uploa
 messaging app shows a preview card, it asks this site to draw a picture of the program from the
 link; the site draws it and keeps nothing.
 
+## Leaderboards, the gallery and short links
+
+These are optional, and only exist if the site you are using has switched them on. Nothing is
+sent unless you choose to use them:
+
+- **Posting a score** sends your program and a nickname. The server checks that the program passes
+  the tests, keeps your nickname and your scores, and throws the program away.
+- **Publishing to the gallery** stores the program, its title, its description and your nickname.
+  Everyone can see them until you delete the program.
+- **A short link** stores the share link it points to, so anyone with the short link can open the
+  program.
+
+The first time you use one of these, your browser makes a random key and keeps it on your device.
+The server stores a scrambled form of it (a salted hash) next to your entries. This lets this
+browser change or delete them, with no account. To stop abuse, the server counts requests per
+visitor using a scrambled form of your IP address; the address itself is not stored. Choose a
+nickname that is not your real name.
+
+You can take your scores off a leaderboard, or delete a program you published, at any time from
+the same browser.
+
 ## The site itself
 
 Like every website, the server that sends you the pages sees your IP address and which pages

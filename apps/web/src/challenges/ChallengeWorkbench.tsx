@@ -3,6 +3,7 @@
 import {
   CHALLENGES,
   CONCEPT_NAMES,
+  hasLeaderboard,
   meetsTargets,
   runChallenge,
   type Challenge,
@@ -14,6 +15,8 @@ import { DIALECTS } from "@joes-sim/engine";
 import { motion, useReducedMotion } from "motion/react";
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
+import { communityOn } from "@/community/client";
+import { Leaderboard } from "@/community/Leaderboard";
 import { Editor } from "@/sim/editor/Editor";
 import { Hints } from "@/sim/panels/ProblemsPanel";
 import { SimProvider, useSim, useSimState } from "@/sim/SimProvider";
@@ -86,6 +89,7 @@ function Workbench({ challenge }: { challenge: Challenge }) {
   const [result, setResult] = useState<ChallengeResult | null>(null);
   const [runId, setRunId] = useState(0);
   const [showSolution, setShowSolution] = useState(false);
+  const [passingSource, setPassingSource] = useState<string | null>(null);
   const loaded = useRef(false);
 
   // Restore the learner's draft and progress.
@@ -119,6 +123,7 @@ function Workbench({ challenge }: { challenge: Challenge }) {
     });
     setResult(r);
     setRunId((n) => n + 1);
+    if (r.passed) setPassingSource(source);
     const changed = source.trim() !== challenge.starter.trim();
     const p = await updateChallenge(challenge.id, (c) => ({
       ...c,
@@ -252,6 +257,9 @@ function Workbench({ challenge }: { challenge: Challenge }) {
             latest={result?.scores ?? null}
             runId={runId}
           />
+          {communityOn && hasLeaderboard(challenge) && (
+            <Leaderboard challenge={challenge.id} passingSource={passingSource} />
+          )}
           <section aria-labelledby="hints-h" className="space-y-2">
             <h2 id="hints-h" className="font-bold">
               Hints

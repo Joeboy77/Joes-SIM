@@ -11,6 +11,7 @@ export const en = {
   "nav.compiler": "Compiler",
   "nav.riscv": "RISC-V",
   "nav.machines": "Machines",
+  "nav.gallery": "Gallery",
   "nav.packs": "Packs",
   "nav.progress": "Progress",
   "footer.site": "Site",

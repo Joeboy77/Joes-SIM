@@ -1,4 +1,5 @@
 import { CHALLENGES } from "@joes-sim/content";
+import { communityOn } from "@/community/client";
 import { LESSONS } from "@/lessons/catalogue";
 
 /** Pages for search engines. */
@@ -10,6 +11,7 @@ export const PUBLIC_PAGES: readonly string[] = [
   "/compiler",
   "/riscv",
   "/machines",
+  ...(communityOn ? ["/gallery"] : []),
   "/packs",
   "/reference",
   "/docs",
