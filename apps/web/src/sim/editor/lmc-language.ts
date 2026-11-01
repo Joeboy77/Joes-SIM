@@ -11,7 +11,7 @@ const CLASSIC_MNEMONICS = new Set(
     "DAT",
   ]),
 );
-const EXT = new Set<string>(EXT_MNEMONICS);
+const EXT = new Set<string>([...EXT_MNEMONICS, "TAS"]);
 const ALL_MNEMONICS = new Set([...CLASSIC_MNEMONICS, ...EXT]);
 
 /**
@@ -103,6 +103,7 @@ const DESCRIPTIONS: Record<string, string> = {
   WAIT: "Wait for an interrupt",
   GET: "Read a device port into the accumulator",
   PUT: "Send the accumulator to a device port",
+  TAS: "Test and set a lock: read it into the accumulator and make it 1, in one step",
 };
 
 /** Completes mnemonics allowed by the dialect, and labels defined in the program. */
@@ -116,6 +117,7 @@ export function lmcCompletions(
     const d = DIALECTS[dialect()];
     const names = [...Object.keys(d.spellings), "DAT"];
     if (machine() === "extended") names.push(...EXT_MNEMONICS);
+    if (machine() === "multicore") names.push("TAS");
     const mnemonics = names.map((label) => ({
       label,
       type: "keyword",

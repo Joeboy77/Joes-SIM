@@ -325,3 +325,45 @@ describe("the extended machine in the store", () => {
     expect(outputs(store)).toEqual([65]);
   });
 });
+
+const RACE = `
+        LDA total
+        ADD one
+        STA total
+        HLT
+core1   LDA total
+        ADD one
+        STA total
+        HLT
+total   DAT 0
+one     DAT 1
+`;
+
+describe("the multicore machine in the store", () => {
+  it("starts each core at its label and runs them in turn", () => {
+    const store = createSimStore({ source: RACE, inputText: "", machine: "multicore" });
+    expect(loaded(store).multi?.cores.map((c) => c.pc)).toEqual([0, 4]);
+    const r = run(loaded(store));
+    expect(r.state.memory[8]).toBe(1); // round-robin, one instruction each: an update is lost
+  });
+
+  it("manual stepping picks cores, and stepping back replays the same choices", () => {
+    const store = createSimStore({
+      source: RACE,
+      inputText: "",
+      machine: "multicore",
+      multicore: { cores: 2, schedule: { mode: "manual", quantum: 1, seed: 1 } },
+    });
+    const a = store.getState();
+    for (const c of [0, 0, 0, 1, 1, 1]) store.getState().runCore(c);
+    expect(loaded(store).memory[8]).toBe(2);
+    store.getState().jumpToCycle(3);
+    store.getState().jumpToCycle(6);
+    expect(loaded(store).memory[8]).toBe(2);
+    // Choosing differently from step 3 replaces the choices after it.
+    store.getState().jumpToCycle(1);
+    for (const c of [1, 1, 1, 0, 0]) store.getState().runCore(c);
+    expect(loaded(store).memory[8]).toBe(1);
+    expect(a.multicore.cores).toBe(2);
+  });
+});

@@ -43,7 +43,7 @@ export function readHandoff(hash: string): Handoff | null {
       name: typeof d.name === "string" ? d.name : "Opened program",
       source: d.source,
       dialect: d.dialect,
-      ...(d.machine === "extended" ? { machine: "extended" as const } : {}),
+      ...(d.machine === "extended" || d.machine === "multicore" ? { machine: d.machine } : {}),
       inputs: typeof d.inputs === "string" ? d.inputs : "",
       cycle: typeof d.cycle === "number" && d.cycle >= 0 ? Math.floor(d.cycle) : 0,
     };

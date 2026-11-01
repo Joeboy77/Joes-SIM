@@ -42,6 +42,7 @@ export const en = {
   "run.machine": "Machine",
   "run.machineClassic": "Classic",
   "run.machineExtended": "Extended",
+  "run.machineMulticore": "Multicore",
   "run.view": "View",
   "run.presentation": "Presentation mode",
   "tabs.panels": "Simulator panels",

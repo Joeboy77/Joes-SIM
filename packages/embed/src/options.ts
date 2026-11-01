@@ -7,7 +7,7 @@ export type Panel = (typeof PANELS)[number];
 export const DEFAULT_PANELS: readonly Panel[] = ["editor", "machine", "explain", "io"];
 
 const DIALECTS = ["classic", "higginson", "ocr"] as const;
-const MACHINES = ["classic", "extended"] as const;
+const MACHINES = ["classic", "extended", "multicore"] as const;
 const VIEWS = ["datapath", "story", "flow", "pipeline", "cache"] as const;
 
 export interface EmbedSettings {

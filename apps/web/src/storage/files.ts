@@ -8,7 +8,7 @@ import { normaliseProgress, type Progress } from "./progress";
 import type { WorkspaceFile } from "./workspace";
 
 const DIALECT_LINE = /^\/\/ dialect: ([a-z]+)\s*$/;
-const MACHINE_LINE = /^\/\/ machine: extended\s*$/;
+const MACHINE_LINE = /^\/\/ machine: (extended|multicore)\s*$/;
 
 /**
  * An .lmc file is the source, with its dialect on the first line as a comment, and a second
@@ -16,7 +16,7 @@ const MACHINE_LINE = /^\/\/ machine: extended\s*$/;
  */
 export function toLmc(file: Pick<WorkspaceFile, "source" | "dialect" | "machine">): string {
   const source = file.source.endsWith("\n") ? file.source : `${file.source}\n`;
-  const machine = file.machine === "extended" ? "// machine: extended\n" : "";
+  const machine = file.machine && file.machine !== "classic" ? `// machine: ${file.machine}\n` : "";
   return `// dialect: ${file.dialect}\n${machine}${source}`;
 }
 
@@ -28,8 +28,9 @@ export function fromLmc(
   const [first, ...rest] = normalised.split("\n");
   const m = first?.match(DIALECT_LINE);
   if (m?.[1] && isDialectId(m[1])) {
-    if (rest[0] !== undefined && MACHINE_LINE.test(rest[0])) {
-      return { source: rest.slice(1).join("\n"), dialect: m[1], machine: "extended" };
+    const machine = rest[0]?.match(MACHINE_LINE)?.[1];
+    if (machine === "extended" || machine === "multicore") {
+      return { source: rest.slice(1).join("\n"), dialect: m[1], machine };
     }
     return { source: rest.join("\n"), dialect: m[1], machine: "classic" };
   }
@@ -116,7 +117,7 @@ export function parseBackup(text: string): BackupResult {
       name: f.name,
       source: f.source,
       dialect: f.dialect,
-      ...(f.machine === "extended" ? { machine: "extended" as const } : {}),
+      ...(f.machine === "extended" || f.machine === "multicore" ? { machine: f.machine } : {}),
       inputs: typeof f.inputs === "string" ? f.inputs : "",
       created: typeof f.created === "number" ? f.created : 0,
       updated: typeof f.updated === "number" ? f.updated : 0,

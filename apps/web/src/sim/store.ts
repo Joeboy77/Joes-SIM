@@ -22,6 +22,8 @@ import {
   type AssembleResult,
   type CacheConfig,
   type PipelineOptions,
+  type Schedule,
+  DEFAULT_SCHEDULE,
   type Component,
   type ConditionTarget,
   type DialectId,
@@ -123,6 +125,8 @@ export interface SimState {
   pipeline: PipelineOptions;
   /** Cache view settings. */
   cache: CacheConfig;
+  /** Multicore machine settings: how many cores, and how they are scheduled. */
+  multicore: { cores: number; schedule: Schedule };
 }
 
 export interface SimActions {
@@ -163,20 +167,42 @@ export interface SimActions {
   setHoverTerm(term: Component | null): void;
   setPipeline(options: Partial<PipelineOptions>): void;
   setCache(config: Partial<CacheConfig>): void;
+  /** Multicore: change the number of cores or the schedule (starts a new run). */
+  setMulticore(settings: Partial<{ cores: number; schedule: Schedule }>): void;
+  /** Multicore, manual schedule: run one instruction on this core. */
+  runCore(core: number): void;
 }
 
 export type SimStore = SimState & SimActions;
 
-function build(source: string, dialect: DialectId, inputText: string, machine: MachineId) {
+type MulticoreSettings = SimState["multicore"];
+const DEFAULT_MULTICORE: MulticoreSettings = { cores: 2, schedule: DEFAULT_SCHEDULE };
+
+function build(
+  source: string,
+  dialect: DialectId,
+  inputText: string,
+  machine: MachineId,
+  multicore: MulticoreSettings = DEFAULT_MULTICORE,
+) {
   const assembled = assemble(source, { dialect, machine });
   const parsed = parseInputs(inputText, dialect);
-  const initial = assembled.program
+  const program = assembled.program;
+  const initial = program
     ? createState({
-        memory: assembled.program.memory,
+        memory: program.memory,
         inputs: parsed.values,
         dialect,
         machine,
-        stackFloor: assembled.program.size,
+        stackFloor: program.size,
+        ...(machine === "multicore"
+          ? {
+              cores: multicore.cores,
+              schedule: multicore.schedule,
+              // Each core starts at its label (core0 to core3), or at 00.
+              starts: [0, 1, 2, 3].map((i) => program.labels[`core${i}`]?.address ?? 0),
+            }
+          : {}),
       })
     : null;
   const findings = assembled.program ? analyse(assembled.program, { inputs: parsed.values }) : [];
@@ -210,12 +236,15 @@ function stopReasonOf(state: MachineState): StopReason | null {
 }
 
 export function createSimStore(
-  initial: Partial<Pick<SimState, "source" | "dialect" | "inputText" | "machine">> = {},
+  initial: Partial<
+    Pick<SimState, "source" | "dialect" | "inputText" | "machine" | "multicore">
+  > = {},
 ) {
   const source = initial.source ?? STARTER_PROGRAM;
   const dialect = initial.dialect ?? "classic";
   const inputText = initial.inputText ?? "3, 4";
   const machine = initial.machine ?? "classic";
+  const multicore = initial.multicore ?? DEFAULT_MULTICORE;
 
   return createStore<SimStore>()((set, get) => {
     /** Brings the trace up to the current state. Call after every change of position. */
@@ -245,6 +274,12 @@ export function createSimStore(
       if (s === state) {
         set({ stopReason: stopReasonOf(state) });
         return null;
+      }
+      // Manual multicore choices are part of the run: replays must make them again.
+      const initial = get().initial;
+      if (s.multi && initial?.multi && s.multi.choices !== initial.multi.choices) {
+        get().trace?.setChoices(s.multi.choices);
+        set({ initial: { ...initial, multi: { ...initial.multi, choices: s.multi.choices } } });
       }
       set({
         state: s,
@@ -284,7 +319,7 @@ export function createSimStore(
       dialect,
       machine,
       inputText,
-      ...build(source, dialect, inputText, machine),
+      ...build(source, dialect, inputText, machine, multicore),
       stepId: 0,
       breakpoints: [],
       speed: "normal",
@@ -298,30 +333,47 @@ export function createSimStore(
       hoverTerm: null,
       pipeline: DEFAULT_PIPELINE,
       cache: DEFAULT_CACHE,
+      multicore,
 
       setSource(next) {
-        const { dialect, inputText, machine, stepId } = get();
-        set({ source: next, ...build(next, dialect, inputText, machine), stepId: stepId + 1 });
+        const { dialect, inputText, machine, multicore, stepId } = get();
+        set({
+          source: next,
+          ...build(next, dialect, inputText, machine, multicore),
+          stepId: stepId + 1,
+        });
       },
 
       setDialect(next) {
-        const { source, inputText, machine, stepId } = get();
-        set({ dialect: next, ...build(source, next, inputText, machine), stepId: stepId + 1 });
+        const { source, inputText, machine, multicore, stepId } = get();
+        set({
+          dialect: next,
+          ...build(source, next, inputText, machine, multicore),
+          stepId: stepId + 1,
+        });
       },
 
       setMachine(next) {
-        const { source, dialect, inputText, stepId } = get();
-        set({ machine: next, ...build(source, dialect, inputText, next), stepId: stepId + 1 });
+        const { source, dialect, inputText, multicore, stepId } = get();
+        set({
+          machine: next,
+          ...build(source, dialect, inputText, next, multicore),
+          stepId: stepId + 1,
+        });
       },
 
       setInputText(text) {
-        const { source, dialect, machine, stepId } = get();
-        set({ inputText: text, ...build(source, dialect, text, machine), stepId: stepId + 1 });
+        const { source, dialect, machine, multicore, stepId } = get();
+        set({
+          inputText: text,
+          ...build(source, dialect, text, machine, multicore),
+          stepId: stepId + 1,
+        });
       },
 
       reset() {
-        const { source, dialect, inputText, machine, stepId } = get();
-        set({ ...build(source, dialect, inputText, machine), stepId: stepId + 1 });
+        const { source, dialect, inputText, machine, multicore, stepId } = get();
+        set({ ...build(source, dialect, inputText, machine, multicore), stepId: stepId + 1 });
       },
 
       stepMicro() {
@@ -550,6 +602,29 @@ export function createSimStore(
 
       setCache(config) {
         set({ cache: { ...get().cache, ...config } });
+      },
+
+      setMulticore(settings) {
+        const { source, dialect, inputText, machine, multicore, stepId } = get();
+        const next = { ...multicore, ...settings };
+        set({
+          multicore: next,
+          ...build(source, dialect, inputText, machine, next),
+          stepId: stepId + 1,
+        });
+      },
+
+      runCore(core) {
+        const { state, initial } = get();
+        if (!state?.multi || !initial?.multi) return;
+        // Choosing again from here replaces whatever was chosen after this step before.
+        const choices = state.multi.choices.slice(0, state.cycles);
+        get().trace?.setChoices(choices);
+        set({
+          state: { ...state, multi: { ...state.multi, selected: core, choices } },
+          initial: { ...initial, multi: { ...initial.multi, choices } },
+        });
+        advance("instruction");
       },
     };
   });

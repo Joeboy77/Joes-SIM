@@ -2,6 +2,7 @@
 
 import { useSimState } from "../SimProvider";
 import { ExtendedPanel } from "../extended/ExtendedPanel";
+import { CoresDatapath, CoresStory, MulticorePanel } from "../multicore/MulticoreViews";
 import { useActivity } from "../useActivity";
 import { DatapathView } from "../views/DatapathView";
 import { CacheView } from "../views/CacheView";
@@ -14,13 +15,23 @@ const pad = (n: number) => String(n).padStart(2, "0");
 
 export function MachinePanel({ memory = true }: { memory?: boolean }) {
   const view = useSimState((s) => s.view);
+  const multi = useSimState((s) => s.state?.multi !== undefined);
   const { activity } = useActivity();
   const b = activity.branch;
 
   return (
     <div className="space-y-3">
       <div className="overflow-hidden rounded-md border border-border bg-surface">
-        {view === "datapath" ? (
+        {multi && view === "datapath" ? (
+          <CoresDatapath />
+        ) : multi && view === "story" ? (
+          <CoresStory />
+        ) : multi && (view === "pipeline" || view === "cache") ? (
+          <p className="p-3 text-sm text-muted">
+            The {view} view shows a single core. Switch the machine to Classic or Extended to use
+            it.
+          </p>
+        ) : view === "datapath" ? (
           <DatapathView />
         ) : view === "story" ? (
           <StoryView />
@@ -59,6 +70,7 @@ export function MachinePanel({ memory = true }: { memory?: boolean }) {
         </p>
       )}
       <ExtendedPanel />
+      <MulticorePanel />
       {memory && <MemoryGrid />}
     </div>
   );

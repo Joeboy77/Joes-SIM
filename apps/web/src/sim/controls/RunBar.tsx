@@ -186,11 +186,18 @@ export function RunBar() {
           <select
             id={machineId}
             value={machine}
-            onChange={(e) => a.setMachine(e.target.value === "extended" ? "extended" : "classic")}
+            onChange={(e) =>
+              a.setMachine(
+                e.target.value === "extended" || e.target.value === "multicore"
+                  ? e.target.value
+                  : "classic",
+              )
+            }
             className="min-h-11 rounded-sm border border-border-strong bg-surface px-2 text-sm text-text"
           >
             <option value="classic">{t("run.machineClassic")}</option>
             <option value="extended">{t("run.machineExtended")}</option>
+            <option value="multicore">{t("run.machineMulticore")}</option>
           </select>
         </div>
 

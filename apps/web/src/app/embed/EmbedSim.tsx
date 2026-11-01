@@ -17,7 +17,7 @@ interface Ready {
   readonly settings: EmbedSettings;
   readonly source: string;
   readonly dialect: NonNullable<EmbedSettings["dialect"]>;
-  readonly machine: "classic" | "extended";
+  readonly machine: "classic" | "extended" | "multicore";
   readonly inputs: string;
   readonly view: NonNullable<EmbedSettings["view"]>;
   readonly name: string;

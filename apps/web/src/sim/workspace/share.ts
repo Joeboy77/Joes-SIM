@@ -22,8 +22,8 @@ interface Wire {
   n?: string;
   s: string;
   d: DialectId;
-  /** "e" for the extended machine. */
-  m?: "e";
+  /** "e" for the extended machine, "m" for the multicore one. */
+  m?: "e" | "m";
   i?: string;
   w?: ViewMode;
 }
@@ -32,6 +32,7 @@ export function encodeShare(s: Shared): string {
   const wire: Wire = { v: 1, s: s.source, d: s.dialect };
   if (s.name) wire.n = s.name;
   if (s.machine === "extended") wire.m = "e";
+  if (s.machine === "multicore") wire.m = "m";
   if (s.inputs) wire.i = s.inputs;
   if (s.view !== "datapath") wire.w = s.view;
   return compressToEncodedURIComponent(JSON.stringify(wire));
@@ -50,7 +51,7 @@ export function decodeShare(p: string | null | undefined): Shared | null {
       name: typeof w.n === "string" ? w.n.slice(0, 80) : "",
       source: w.s,
       dialect: w.d,
-      machine: w.m === "e" ? "extended" : "classic",
+      machine: w.m === "e" ? "extended" : w.m === "m" ? "multicore" : "classic",
       inputs: typeof w.i === "string" ? w.i : "",
       view: w.w && VIEW_ORDER.includes(w.w) ? w.w : "datapath",
     };

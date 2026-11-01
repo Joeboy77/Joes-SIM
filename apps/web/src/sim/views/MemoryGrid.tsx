@@ -10,6 +10,7 @@ import {
 import { useId, useRef, useState } from "react";
 import { useSim, useSimState } from "../SimProvider";
 import { useActivity } from "../useActivity";
+import { useRaces } from "../multicore/MulticoreViews";
 import { useTrace } from "../useTrace";
 
 const USAGE: Record<UsageKind, string> = {
@@ -28,6 +29,7 @@ export function MemoryGrid() {
   const machine = useSimState((s) => s.machine);
   const { activity } = useActivity();
   const heatmap = useSimState((s) => s.heatmap);
+  const races = useRaces();
   const { trace } = useTrace();
   const [inspect, setInspect] = useState<number | null>(null);
   const press = useRef<{ timer: ReturnType<typeof setTimeout> | null; long: boolean }>({
@@ -99,6 +101,7 @@ export function MemoryGrid() {
                     ? "the address or port of the instruction before"
                     : null;
               const onStack = state.ext !== undefined && a >= state.ext.sp;
+              const race = races.some((r) => r.address === a);
               const usage = trace ? usageOf(trace, a) : "unused";
               const heat = heatmap ? uses(a) / most : 0;
               const marks = [
@@ -107,6 +110,7 @@ export function MemoryGrid() {
                 written && "just written",
                 bp && "breakpoint",
                 onStack && "on the stack",
+                race && "race: two cores used it without a lock",
                 target && (branch.taken ? "branch target, taken" : "branch target, not taken"),
               ]
                 .filter(Boolean)
@@ -162,18 +166,20 @@ export function MemoryGrid() {
                         ? "border-write border-2"
                         : read
                           ? "border-read border-2"
-                          : target
-                            ? `border-branch border-2 ${branch.taken ? "" : "border-dashed"}`
-                            : onStack
-                              ? "border-write border-dotted border-2"
-                              : "border-border",
+                          : race
+                            ? "border-danger border-2"
+                            : target
+                              ? `border-branch border-2 ${branch.taken ? "" : "border-dashed"}`
+                              : onStack
+                                ? "border-write border-dotted border-2"
+                                : "border-border",
                     program?.kinds[a] === "empty" ? "text-muted" : "text-text",
                   ].join(" ")}
                 >
                   {/* The accessible name is built from the visible text plus hidden words, so it always contains what is shown (WCAG 2.5.3). */}
                   <span className={`text-[0.6rem] ${heat > 0 ? "text-text" : "text-muted"}`}>
                     <span aria-hidden="true">
-                      {current ? "▶" : written ? "↑" : read ? "↓" : target ? "↪" : ""}
+                      {current ? "▶" : written ? "↑" : read ? "↓" : race ? "⚡" : target ? "↪" : ""}
                     </span>
                     <span className="sr-only">Mailbox </span>
                     {String(a).padStart(2, "0")}
