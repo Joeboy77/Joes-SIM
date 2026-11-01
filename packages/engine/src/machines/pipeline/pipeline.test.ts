@@ -300,11 +300,12 @@ describe("hand-worked pipeline examples (docs/specs/pipeline.md)", () => {
 });
 
 describe("pipeline invariants, on every reference program", () => {
-  const programs = [
+  const programs: { id: string; source: string; inputs: number[]; keys: KeyPress[] }[] = [
     ...REFERENCE_PROGRAMS.map((p) => ({
       id: p.id,
       source: p.source,
       inputs: [...(p.cases[0]?.inputs ?? [])],
+      keys: [],
     })),
     ...EXTENDED_REFERENCE_PROGRAMS.map((p) => ({
       id: p.id,
@@ -319,7 +320,7 @@ describe("pipeline invariants, on every reference program", () => {
         if (!assemble(p.source, { machine: "extended" }).ok) return;
         const r = pipeline(p.source, options, {
           inputs: p.inputs,
-          keys: "keys" in p ? p.keys : [],
+          keys: p.keys,
         });
         const n = r.instructions.length;
         if (n === 0) return;
