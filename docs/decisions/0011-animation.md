@@ -9,8 +9,10 @@ when stepping back at slow speeds.
 ## Choice
 
 - **Speeds** (`apps/web/src/sim/speeds.ts`): manual, slow and normal move one micro-step per
-  tick, with transfers animated for 650, 650 and 260 ms. Fast moves one instruction per tick
-  with highlights only. Instant runs to the end in a web worker.
+  tick. Slow ticks every 1.5 s and normal every 0.36 s, so one instruction (about 7 micro-steps)
+  takes about 10 s and 2.5 s. Fast moves one instruction every 0.45 s and plays its transfers
+  one after another in 60 ms hops, so values still visibly move. Instant runs to the end in a
+  web worker.
 - **Events drive everything.** The engine's micro-step events become transfers, active
   components, reads, writes and a branch. Stepping back reverses the transfers. They play in
   reverse at slow and manual speeds; at other speeds the view jumps to the new state.
@@ -24,6 +26,11 @@ when stepping back at slow speeds.
   as text in the datapath view instead.
 - **motion/react** handles the tweens. It animates transforms only, which the browser can run
   off the main thread.
+
+**Retuned after Phase 11.** The project owner found slow not slow enough (0.9 s a micro-step) and fast far
+too fast: it moved about 16 instructions a second with no movement, about 37 times faster than
+normal, so a program was over before it could be followed. Programs that need raw speed use
+instant.
 
 ## Reason
 
